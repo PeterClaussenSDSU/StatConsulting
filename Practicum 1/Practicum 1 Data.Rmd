@@ -1,0 +1,80 @@
+---
+title: "Practicum 1"
+author: "Peter Claussen"
+date: "9/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+PRACTICUM 1:STAT792,FALL2021PROJECT OVERVIEW.This practicumregards a study from a call center with data containing various health metrics on employees gathered over an eight month period. Of particular interest is in determining what variables affect weight change over this eight month period. For a complete background, read the document “redacted article.PDF” contained in this folder. While there is more health data contained in this document and the provided data set “Practicum 1 Data.xlsx” the sole focus for  this  analysis  is  what  affects  some  measure  of  weight change  and  in  the  latter  file,  the  variables  of  interest  are highlighted in either yellow or orange
+
+SA.1 Does total metabolic minutes have an effect on weight gain?
+SA.2 Does shift have an effect on weight gain?
+
+
+The methods used to address the specific aims is entirely up to the consultant. In your analysis you will decide what variable, combination of variables, or transformation of variables measure “weightgain.” These could include change in weight, change in BMI, binary weight gain Y/N to name a few and of course transformations are acceptable. In your documentation your reasoning for your choice of dependent must be included with support for your choice.Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches
+
+
+Note that there are missing values for all of the variables you need or may consider for your analyses. Note also that complete records are missing and these can be deleted. It is worth noting that while total_met_minmay be missing, some of those values can be filled in by the formulaTotal_met_min = 8*Vig_ex_time + 4*Mod_ex_time + 3.3*Walk_ex_timeEven after this imputation there will be missing values. In any case ofmissing values it is up to you to determine how to deal with them. The method used must be documented as well as the reasoning behind your choice.There is limited demographic data in the data set; it is up to you whether to include these or not. Again and as always, document your reasoning behind this
+
+
+We have inspected the data in Excel format manually, and have exported to CSV to read into R for analysis. For convenience, we have identified the columns of interest. 
+
+Two orange highlighted columns ('lbs_gained', 'pounds_gained') appear to be identical. We will include only `lbs_gained`
+
+```{r}
+yellow <- c('shift','Total_Met_Min')
+orange <- c('gender', 'Age', 'height', 'weightgain', 'lbs_gained', 'BMI', 'Vig.ex.Time', 'Mod.ex.time', 'Walk.ex.Time')
+```
+
+Also from inspection, the column `Snumber` appears to uniquely identify observations, and when this column is empty, the remaining columns are also empty. Thus, we will use this to in a first pass to screen for missing data.
+
+```{r}
+metrics.dat <- read.csv('Practicum 1 Data.csv',header=TRUE)
+metrics.dat <- metrics.dat[!is.na(metrics.dat$Snumber),]
+```
+
+```{r}
+summary(metrics.dat[,c(yellow,orange)])
+```
+
+There are two responses, gender and weightgain, that should be binomial. However, there are three levels.
+
+```{r}
+metrics.dat$gender[metrics.dat$gender==''] <- 'Missing'
+metrics.dat$weightgain[metrics.dat$weightgain==''] <- 'Missing'
+unique(metrics.dat$gender)
+unique(metrics.dat$weightgain)
+```
+
+```{r}
+metrics.dat$shift <- factor(metrics.dat$shift)
+metrics.dat$gender <- factor(metrics.dat$gender)
+metrics.dat$weightgain <- factor(metrics.dat$weightgain)
+```
+
+
+
+
+```{r}
+unique(metrics.dat$bweight)
+```
+
+```{r,fig.width=10,fig.height=10}
+pairs(metrics.dat[,c(yellow,orange)])
+```
+
+This summary doesn't include missing values. To visualize, let's set NA to 0
+
+```{r}
+metrics.dat[is.na(metrics.dat)] <- 0
+```
+
+```{r,fig.width=10,fig.height=10}
+pairs(metrics.dat[,c(yellow,orange)])
+```
