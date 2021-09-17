@@ -78,6 +78,69 @@ At first glance, this appears to be a logistic regression - the response variabl
 
 BMI at the end of the study period has been recorded, while initial BMI has not. We can, however, calculate an initial BMI from other data columns.
 
+"Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches" 
+```{r}
+# Calculate body weight at 8 months
+metrics.dat['beginning_bweight'] <- metrics.dat$bweight - metrics.dat$pounds_gained
+
+# Need to account for instances where body weight is not entered
+metrics.dat$beginning_bweight[metrics.dat$beginning_bweight<='0'] <- '0'
+
+# Take a look at all BMI values
+unique(metrics.dat$BMI)
+
+# Calculate beginning BMI -- internet tells me BMI=(weight/height^2) * 703
+# Since height values ~60/65, I am assuming they are inches not meters
+metrics.dat['beginning_bweight'] <- as.numeric(metrics.dat$beginning_bweight)
+metrics.dat['beginning_BMI'] <- (metrics.dat$beginning_bweight / (metrics.dat$height)^2)*703
+
+# Take a look at all beginning_BMI values
+unique(metrics.dat$beginning_BMI)
+
+# ignore non-positive values
+metrics.dat$beginning_BMI[is.nan(metrics.dat$beginning_BMI)] <- 0
+metrics.dat$beginning_BMI[!is.finite(metrics.dat$beginning_BMI)] <- 0
+```
+
+Look at BMI in the beginning vs at the end
+```{r}
+# convert to numeric for calculations
+metrics.dat$beginning_BMI <- as.numeric(metrics.dat$beginning_BMI)
+
+# Are the means different? --Yes, BMI is bigger than beginning_BMI
+mean(metrics.dat$beginning_BMI)
+mean(metrics.dat$BMI)
+
+# Visualize the columns
+metrics.dat$beginning_BMI[metrics.dat$beginning_BMI==0] <- NA
+hist(as.numeric(metrics.dat$beginning_BMI))
+
+metrics.dat$BMI[metrics.dat$BMI==0] <- NA
+hist(as.numeric(metrics.dat$BMI))
+
+# Look at relationship between BMI and beginning BMI -- appears that BMI only increases or stays the same over time
+plot(metrics.dat$beginning_BMI, metrics.dat$BMI)
+
+```
+
+I want to see if gender affects BMI 
+```{r}
+# To view all plots together
+par(mfrow=c(2,2))
+
+# Female Beginning BMI
+hist(log(metrics.dat[which(metrics.dat$gender=='Female'), 'beginning_BMI']), main="Log of Female Beginning BMI", ylim=c(0,40))
+
+# Female BMI
+hist(log(metrics.dat[which(metrics.dat$gender=='Female'), 'BMI']), main="Log of Female BMI", ylim=c(0,40))
+
+# Male Beginning BMI
+hist(log(metrics.dat[which(metrics.dat$gender=='Male'), 'beginning_BMI']), main="Log of Male Beginning BMI", ylim=c(0,40))
+
+# Male BMI
+hist(log(metrics.dat[which(metrics.dat$gender=='Male'), 'BMI']), main="Log of Male BMI", ylim=c(0,40))
+
+```
 
 # Predictor Variables
 
