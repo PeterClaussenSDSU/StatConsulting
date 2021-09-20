@@ -145,7 +145,7 @@ plot(metrics.dat$beginning_BMI, metrics.dat$BMI, xlab='Beginning BMI', ylab='Fin
 
 ```
 
-The following histograms aim to see if there are any apparent relationships between gender and BMI gain in this dataset. It appears there is a difference in histogram shapes for female beginning BMI and female final BMI. If BMI is chosen to be the response variable, these variables will be looked at more closely to determine if there is a positive/negative relationship.
+The following histograms aim to see if there is any apparent relationship between gender and BMI gain in this dataset. It appears there is a difference in histogram shapes for female beginning BMI and female final BMI. If BMI is chosen to be the response variable, these variables will be looked at more closely to determine if there is a positive/negative relationship.
 ```{r, echo=TRUE}
 # To view all plots together
 par(mfrow=c(2,2))
@@ -170,6 +170,7 @@ hist((metrics.dat[which(metrics.dat$gender=='Male'), 'BMI']), main="Male BMI", x
 dev.off()
 ```
  
+To look at the difference between the initial BMI and the final BMI for call center employees, we created a new column (`BMI_diff`) by subtracting the initial BMI from the final BMI. Thus, in this column, positive values represent increases in BMI over the eight month period.
 ```{r, echo=FALSE, results='hide'}
 # Create a BMI_diff column to show BMI change over the 8 months
 metrics.dat['BMI_diff'] <- metrics.dat$BMI - metrics.dat$beginning_BMI
@@ -179,7 +180,6 @@ min(metrics.dat$BMI_diff)
 
 # need to look at this without the zeros that are from not having BMI values
 plot(metrics.dat$BMI_diff)
-
 ```
 
 ```{r, echo=FALSE, results='hide'}
@@ -188,9 +188,23 @@ plot(metrics.dat$BMI_diff)
 temp <- ''
 temp <- ((metrics.dat$bweight)/(metrics.dat$height)^2)*703
 
-temp[temp==0] <- NA
-
 plot(temp, metrics.dat$BMI)
+abline(0,1,col='red')
+```
+
+Observe plot of (`shift`) vs (`BMI_diff`)
+```{r}
+plot(metrics.dat$shift, metrics.dat$BMI_diff, xlab='Shift', ylab='Difference in BMI')
+```
+
+Observe plot of (`CalcTMM`) vs (`BMI_diff`)
+```{r}
+plot(metrics.dat$CalcTMM, metrics.dat$BMI_diff, xlab='CalcTMM', ylab='Difference in BMI')
+```
+
+Observe plot of (`Gender`) vs (`BMI_Diff`)
+```{r}
+plot(metrics.dat$gender,metrics.dat$BMI_diff)
 ```
 
 
