@@ -2,7 +2,9 @@
 title: "Practicum 1"
 author: "Peter Claussen"
 date: "9/16/2021"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,17 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Overview
 
-PRACTICUM 1:STAT792,FALL2021PROJECT OVERVIEW.This practicumregards a study from a call center with data containing various health metrics on employees gathered over an eight month period. Of particular interest is in determining what variables affect weight change over this eight month period. For a complete background, read the document “redacted article.PDF” contained in this folder. While there is more health data contained in this document and the provided data set “Practicum 1 Data.xlsx” the sole focus for  this  analysis  is  what  affects  some  measure  of  weight change  and  in  the  latter  file,  the  variables  of  interest  are highlighted in either yellow or orange
+We have been given an Excel data file with data collected for a study from a call center. These data include health metric from **employees** gathered over an eight month period. 
 
-SA.1 Does total metabolic minutes have an effect on weight gain?
-SA.2 Does shift have an effect on weight gain?
+Variables that are of particular interest have been highlighted in the Excel file. These include variables relating to weight change. We have been tasked to provide an analysis to answer two questions:
 
+- Does total metabolic minutes have an effect on weight gain?
+- Does shift have an effect on weight gain?
 
-The methods used to address the specific aims is entirely up to the consultant. In your analysis you will decide what variable, combination of variables, or transformation of variables measure “weightgain.” These could include change in weight, change in BMI, binary weight gain Y/N to name a few and of course transformations are acceptable. In your documentation your reasoning for your choice of dependent must be included with support for your choice.Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches
+# Data Cleaning
 
-
-Note that there are missing values for all of the variables you need or may consider for your analyses. Note also that complete records are missing and these can be deleted. It is worth noting that while total_met_minmay be missing, some of those values can be filled in by the formulaTotal_met_min = 8*Vig_ex_time + 4*Mod_ex_time + 3.3*Walk_ex_timeEven after this imputation there will be missing values. In any case ofmissing values it is up to you to determine how to deal with them. The method used must be documented as well as the reasoning behind your choice.There is limited demographic data in the data set; it is up to you whether to include these or not. Again and as always, document your reasoning behind this
-
+There are many missing rows in the data. While complete data screening will not be determined until we've chosen both response and predictor variables, we can perform some prelimiries.
 
 We have inspected the data in Excel format manually, and have exported to CSV to read into R for analysis. For convenience, we have identified the columns of interest. 
 
@@ -58,12 +59,167 @@ metrics.dat$gender <- factor(metrics.dat$gender)
 metrics.dat$weightgain <- factor(metrics.dat$weightgain)
 ```
 
+# Response Variables
+While the data include a variable (data column) named `weightgain`, we are asked to consider other reponse variables, including change in weight (`lbs_gained`) and change in BMI. Thus, our first task is to determine the appropriate response variable. The choice of response variable will dictate both choice of statistical method (i.e. logistic regression vs linear regression) and methods for data cleaning.
 
+## weightgain (Binomial Response)
+
+A quick plot to visualize
+
+```{r}
+metrics.dat$Total_Met_Min[is.na(metrics.dat$Total_Met_Min)] <- 0
+plot(weightgain ~ Total_Met_Min,data=metrics.dat)
+plot(weightgain ~ shift,data=metrics.dat)
+```
+
+At first glance, this appears to be a logistic regression - the response variable (weightgain) should be binary (Yes/No). However, we are asked to consider alternate response variables (BMI, pounds gained) as markers for the general response "weight gain', as opposed to the specific data variable 'weightgain'
+
+## Pounds gained (Continuous Response)
+
+## Change in BMI
+
+BMI at the end of the study period has been recorded, while initial BMI has not. We can, however, calculate an initial BMI from other data columns.
+
+"Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches" 
+
+
+```{r, echo=FALSE,results='hide'}
+# Calculate body weight at 8 months
+metrics.dat['beginning_bweight'] <- metrics.dat$bweight - metrics.dat$pounds_gained
+
+# Need to account for instances where body weight is not entered
+metrics.dat$beginning_bweight[metrics.dat$beginning_bweight<='0'] <- '0'
+
+# Take a look at all BMI values
+unique(metrics.dat$BMI)
+
+# Calculate beginning BMI -- internet tells me BMI=(weight/height^2) * 703
+# Since height values ~60/65, I am assuming they are inches not meters
+metrics.dat['beginning_bweight'] <- as.numeric(metrics.dat$beginning_bweight)
+metrics.dat['beginning_BMI'] <- (metrics.dat$beginning_bweight / (metrics.dat$height)^2)*703
+
+# ignore non-positive values
+metrics.dat$beginning_BMI[is.nan(metrics.dat$beginning_BMI)] <- 0
+metrics.dat$beginning_BMI[!is.finite(metrics.dat$beginning_BMI)] <- 0
+
+# Take a look at all beginning_BMI values
+unique(metrics.dat$beginning_BMI)
+
+```
+
+
+```{r, echo=FALSE, results='hide'}
+##Look at BMI in the beginning vs at the end
+
+# convert to numeric for calculations
+metrics.dat$beginning_BMI <- as.numeric(metrics.dat$beginning_BMI)
+
+# Are the means different? --Yes, BMI is bigger than beginning_BMI
+mean(metrics.dat$beginning_BMI)
+mean(metrics.dat$BMI)
+```
+
+
+From the histograms of the employees' beginning BMI and the employees' final BMI, we see that there is a slight shift to the right in the frequencies in the histogram for Final BMI. This suggests to us that there were higher numbers of higher BMI among the employees. If BMI is used as our response variable, we will look greater at the relationship between beginning BMI and final BMI, as well as the relationship between shift and BMI, and total metabolic minutes and BMI, respectively. 
+```{r, echo=TRUE}
+# Visualize the columns
+par(mfrow=c(1,2))
+
+metrics.dat$beginning_BMI[metrics.dat$beginning_BMI==0] <- NA
+hist(as.numeric(metrics.dat$beginning_BMI),main='Beginning BMI', xlab='Beginning BMI')
+
+metrics.dat$BMI[metrics.dat$BMI==0] <- NA
+hist(as.numeric(metrics.dat$BMI), main='Final BMI', xlab='Final BMI')
+```
+
+```{r, echo=FALSE, results='hide'}
+# reset par() 
+dev.off()
+```
+
+In the scatter plot visualizing (`beginning BMI`) versus final BMI ('`BMI`'), it appears that there is a strong linear relationship between the variables. The scatter plot also suggests that (`metrics.dat$BMI`) is frequently greater than (`metrics.dat$beginning_BMI`). 
+
+```{r, echo=TRUE}
+# Look at relationship between BMI and beginning BMI -- appears that BMI only increases or stays the same over time
+plot(metrics.dat$beginning_BMI, metrics.dat$BMI, xlab='Beginning BMI', ylab='Final BMI')
+
+```
+
+The following histograms aim to see if there are any apparent relationships between gender and BMI gain in this dataset. It appears there is a difference in histogram shapes for female beginning BMI and female final BMI. If BMI is chosen to be the response variable, these variables will be looked at more closely to determine if there is a positive/negative relationship.
+```{r, echo=TRUE}
+# To view all plots together
+par(mfrow=c(2,2))
+
+# Female Beginning BMI
+hist((metrics.dat[which(metrics.dat$gender=='Female'), 'beginning_BMI']), main="Female Beginning BMI", xlab='Gender is Female')
+
+# Male Beginning BMI
+hist((metrics.dat[which(metrics.dat$gender=='Male'), 'beginning_BMI']), main="Male Beginning BMI", xlab='Gender is Male')
+
+# Female BMI
+hist((metrics.dat[which(metrics.dat$gender=='Female'), 'BMI']), main="Female BMI", xlab='Gender is Female')
+
+# Male BMI
+hist((metrics.dat[which(metrics.dat$gender=='Male'), 'BMI']), main="Male BMI", xlab='Gender is Male')
+
+
+```
+
+```{r, echo=FALSE, results='hide'}
+# return to default par() options
+dev.off()
+```
+ 
+```{r, echo=FALSE, results='hide'}
+# Create a BMI_diff column to show BMI change over the 8 months
+metrics.dat['BMI_diff'] <- metrics.dat$BMI - metrics.dat$beginning_BMI
+
+max(metrics.dat$BMI_diff)
+min(metrics.dat$BMI_diff)
+
+# need to look at this without the zeros that are from not having BMI values
+plot(metrics.dat$BMI_diff)
+
+```
+
+```{r, echo=FALSE, results='hide'}
+# Were the BMI calculations correct?
+# BMI = (weight/height^2)*703
+temp <- ''
+temp <- ((metrics.dat$bweight)/(metrics.dat$height)^2)*703
+
+temp[temp==0] <- NA
+
+plot(temp, metrics.dat$BMI)
+```
+
+
+# Predictor Variables
+
+Total Metabolic Minutes is calculate from 3 data columns; this variable is missing for many rows. We are given the formula
+
+```
+Total_met_min = 8*Vig_ex_time + 4*Mod_ex_time + 3.3*Walk_ex_time
+```
 
 
 ```{r}
-unique(metrics.dat$bweight)
+metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time)
+
+plot(CalcTMM ~ Total_Met_Min,data=metrics.dat)
+abline(0,1,col='red')
+plot(weightgain ~ CalcTMM,data=metrics.dat)
 ```
+
+
+```{r}
+plot(lbs_gained ~ CalcTMM,data=metrics.dat)
+```
+
+```{r}
+plot(lbs_gained ~ weightgain,data=metrics.dat)
+```
+
 
 ```{r,fig.width=10,fig.height=10}
 pairs(metrics.dat[,c(yellow,orange)])
@@ -80,66 +236,4 @@ pairs(metrics.dat[,c(yellow,orange)])
 ```
 
 
-"Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches" 
-```{r}
-# Calculate body weight at 8 months
-metrics.dat['beginning_bweight'] <- metrics.dat$bweight - metrics.dat$pounds_gained
 
-# Need to account for instances where body weight is not entered
-metrics.dat$beginning_bweight[metrics.dat$beginning_bweight<='0'] <- '0'
-
-# Take a look at all BMI values
-unique(metrics.dat$BMI)
-
-# Calculate beginning BMI -- internet tells me BMI=(weight/height^2) * 703
-# Since height values ~60/65, I am assuming they are inches not meters
-metrics.dat['beginning_bweight'] <- as.numeric(metrics.dat$beginning_bweight)
-metrics.dat['beginning_BMI'] <- (metrics.dat$beginning_bweight / (metrics.dat$height)^2)*703
-
-# Take a look at all beginning_BMI values
-unique(metrics.dat$beginning_BMI)
-
-# ignore non-positive values
-metrics.dat$beginning_BMI[metrics.dat$beginning_BMI == 'NaN'] <- '0'
-metrics.dat$beginning_BMI[metrics.dat$beginning_BMI == 'Inf'] <- '0'
-```
-
-Look at BMI in the beginning vs at the end
-```{r}
-# convert to numeric for calculations
-metrics.dat$beginning_BMI <- as.numeric(metrics.dat$beginning_BMI)
-
-# Are the means different? --Yes, BMI is bigger than beginning_BMI
-mean(metrics.dat$beginning_BMI)
-mean(metrics.dat$BMI)
-
-# Visualize the columns
-metrics.dat$beginning_BMI[metrics.dat$beginning_BMI=='0'] <- "NA"
-hist(as.numeric(metrics.dat$beginning_BMI))
-
-metrics.dat$BMI[metrics.dat$BMI=='0'] <- "NA"
-hist(as.numeric(metrics.dat$BMI))
-
-# Look at relationship between BMI and beginning BMI -- appears that BMI only increases or stays the same over time
-plot(metrics.dat$beginning_BMI, metrics.dat$BMI)
-
-```
-
-I want to see if gender affects BMI 
-```{r}
-# To view all plots together
-par(mfrow=c(2,2))
-
-# Female Beginning BMI
-hist(log(as.numeric(metrics.dat[which(metrics.dat$gender=='Female'), 'beginning_BMI'])), main="Log of Female Beginning BMI", ylim=c(0,40))
-
-# Female BMI
-hist(log(as.numeric(metrics.dat[which(metrics.dat$gender=='Female'), 'BMI'])), main="Log of Female BMI", ylim=c(0,40))
-
-# Male Beginning BMI
-hist(log(as.numeric(metrics.dat[which(metrics.dat$gender=='Male'), 'beginning_BMI'])), main="Log of Male Beginning BMI", ylim=c(0,40))
-
-# Male BMI
-hist(log(as.numeric(metrics.dat[which(metrics.dat$gender=='Male'), 'BMI'])), main="Log of Male BMI", ylim=c(0,40))
-
-```
