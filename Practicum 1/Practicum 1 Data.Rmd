@@ -3,11 +3,11 @@ title: "Practicum 1"
 author:
 - Peter Claussen
 - Ben Derenge
-- Stephanie Leibl
+- Stephanie Liebl
 date: "9/16/2021"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -165,10 +165,13 @@ If desired, `weightgain` can be predicted from Total_met_minutes, as most of the
 
 ## Change in BMI
 
+<!-- #### Start of Stephanie's Additions -->
+
 BMI at the end of the study period has been recorded, while initial BMI has not. We can, however, calculate an initial BMI from other data columns.
 
-"Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches"
-```{r}
+<!-- "Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches"  -->
+
+```{r, echo=FALSE,results='hide'}
 # Calculate body weight at 8 months
 metrics.dat['beginning_bweight'] <- metrics.dat$bweight - metrics.dat$pounds_gained
 
@@ -183,84 +186,148 @@ unique(metrics.dat$BMI)
 metrics.dat['beginning_bweight'] <- as.numeric(metrics.dat$beginning_bweight)
 metrics.dat['beginning_BMI'] <- (metrics.dat$beginning_bweight / (metrics.dat$height)^2)*703
 
-# Take a look at all beginning_BMI values
-unique(metrics.dat$beginning_BMI)
-
 # ignore non-positive values
 metrics.dat$beginning_BMI[is.nan(metrics.dat$beginning_BMI)] <- 0
 metrics.dat$beginning_BMI[!is.finite(metrics.dat$beginning_BMI)] <- 0
+
+# Take a look at all beginning_BMI values
+unique(metrics.dat$beginning_BMI)
+
 ```
 
-Look at BMI in the beginning vs at the end
-```{r}
+
+```{r, echo=FALSE, results='hide'}
+##Look at BMI in the beginning vs at the end
+
 # convert to numeric for calculations
 metrics.dat$beginning_BMI <- as.numeric(metrics.dat$beginning_BMI)
 
 # Are the means different? --Yes, BMI is bigger than beginning_BMI
 mean(metrics.dat$beginning_BMI)
 mean(metrics.dat$BMI)
-
-# Visualize the columns
-metrics.dat$beginning_BMI[metrics.dat$beginning_BMI==0] <- NA
-hist(as.numeric(metrics.dat$beginning_BMI))
-
-metrics.dat$BMI[metrics.dat$BMI==0] <- NA
-hist(as.numeric(metrics.dat$BMI))
-
-# Look at relationship between BMI and beginning BMI -- appears that BMI only increases or stays the same over time
-plot(metrics.dat$beginning_BMI, metrics.dat$BMI)
-
 ```
 
-I want to see if gender affects BMI 
-```{r}
+
+```{r, echo=FALSE, results='hidden'}
+#From the histograms of the employees' beginning BMI and the employees' final BMI, we see that there is a slight shift to the right in the frequencies in the histogram for Final BMI. This suggests to us that there were higher numbers of higher BMI among the employees. If BMI is used as our response variable, we will look greater at the relationship between beginning BMI and final BMI, as well as the relationship between shift and BMI, and total metabolic minutes and BMI, respectively. 
+
+# Visualize the columns
+par(mfrow=c(1,2))
+
+metrics.dat$beginning_BMI[metrics.dat$beginning_BMI==0] <- NA
+hist(as.numeric(metrics.dat$beginning_BMI),main='Beginning BMI', xlab='Beginning BMI')
+
+metrics.dat$BMI[metrics.dat$BMI==0] <- NA
+hist(as.numeric(metrics.dat$BMI), main='Final BMI', xlab='Final BMI')
+```
+
+```{r, echo=FALSE, results='hide'}
+# reset par() 
+dev.off()
+```
+
+In the scatter plot visualizing (`beginning BMI`) versus final BMI ('`BMI`'), it appears that there is a strong linear relationship between the variables. The scatter plot also suggests that (`metrics.dat$BMI`) is frequently greater than (`metrics.dat$beginning_BMI`). 
+
+```{r, echo=TRUE}
+# Look at relationship between BMI and beginning BMI -- appears that BMI only increases or stays the same over time
+plot(metrics.dat$beginning_BMI, metrics.dat$BMI, xlab='Beginning BMI', ylab='Final BMI')
+abline(0,1,col='red')
+```
+
+```{r, echo=FALSE, results='hidden'}
+#The following histograms aim to see if there is any apparent relationship between gender and BMI gain in this dataset. It appears there is a difference in histogram shapes for female beginning BMI and female final BMI. If BMI is chosen to be the response variable, these variables will be looked at more closely to determine if there is a positive/negative relationship.
+
 # To view all plots together
 par(mfrow=c(2,2))
 
 # Female Beginning BMI
-hist(log(metrics.dat[which(metrics.dat$gender=='Female'), 'beginning_BMI']), main="Log of Female Beginning BMI", ylim=c(0,40))
-
-# Female BMI
-hist(log(metrics.dat[which(metrics.dat$gender=='Female'), 'BMI']), main="Log of Female BMI", ylim=c(0,40))
+hist((metrics.dat[which(metrics.dat$gender=='Female'), 'beginning_BMI']), main="Female Beginning BMI", xlab='Gender is Female')
 
 # Male Beginning BMI
-hist(log(metrics.dat[which(metrics.dat$gender=='Male'), 'beginning_BMI']), main="Log of Male Beginning BMI", ylim=c(0,40))
+hist((metrics.dat[which(metrics.dat$gender=='Male'), 'beginning_BMI']), main="Male Beginning BMI", xlab='Gender is Male')
+
+# Female BMI
+hist((metrics.dat[which(metrics.dat$gender=='Female'), 'BMI']), main="Female BMI", xlab='Gender is Female')
 
 # Male BMI
-hist(log(metrics.dat[which(metrics.dat$gender=='Male'), 'BMI']), main="Log of Male BMI", ylim=c(0,40))
+hist((metrics.dat[which(metrics.dat$gender=='Male'), 'BMI']), main="Male BMI", xlab='Gender is Male')
 
 ```
 
+```{r, echo=FALSE, results='hide'}
+# return to default par() options
+dev.off()
+```
+ 
+To look at the difference between the initial BMI and the final BMI for call center employees, we created a new column (`BMI_diff`) by subtracting the initial BMI from the final BMI. Thus, in this column, positive values represent increases in BMI over the eight month period.
+```{r, echo=FALSE}
+# Create a BMI_diff column to show BMI change over the 8 months
+metrics.dat['BMI_diff'] <- metrics.dat$BMI - metrics.dat$beginning_BMI
 
+max(metrics.dat$BMI_diff)
+min(metrics.dat$BMI_diff)
 
+# need to look at this without the zeros that are from not having BMI values
+plot(metrics.dat$BMI_diff)
+```
 
+Add description for this calculation and plot
+```{r, echo=TRUE}
+# Were the BMI calculations correct?
+# BMI = (weight/height^2)*703
+temp <- ''
+temp <- ((metrics.dat$bweight)/(metrics.dat$height)^2)*703
 
+plot(temp, metrics.dat$BMI)
+abline(0,1,col='red')
+```
 
+Observe plots of (`shift`) and (`CalcTMM`) vs (`BMI_diff`)
+```{r}
+par(mfrow=c(1,2))
+plot(metrics.dat$shift, metrics.dat$BMI_diff, xlab='Shift', ylab='Difference in BMI')
 
-# Data Review
+plot(metrics.dat$CalcTMM, metrics.dat$BMI_diff, xlab='CalcTMM', ylab='Difference in BMI')
+```
 
-There are many missing rows in the data. While complete data screening will not be determined until we've chosen both response and predictor variables, we can perform some prelimiries.
-
-We have inspected the data in Excel format manually, and have exported to CSV to read into R for analysis. For convenience, we have identified the columns of interest. 
-
-Two orange highlighted columns ('lbs_gained', 'pounds_gained') appear to be identical. We will include only `lbs_gained`
-
-Also from inspection, the column `Snumber` appears to uniquely identify observations, and when this column is empty, the remaining columns are also empty. Thus, we will use this to in a first pass to screen for missing data.
+Observe plot of (`Gender`) vs (`BMI_Diff`)
+```{r}
+plot(metrics.dat$gender,metrics.dat$BMI_diff)
+```
 
 ```{r}
+par(mfrow=c(1,2))
+plot(metrics.dat$beginning_BMI,metrics.dat$lbs_gained)
+plot(metrics.dat$lbs_gained,metrics.dat$BMI_diff)
+```
+
+
+<!-- #### End of Stephanie's Additions -->
+
+<!-- # Data Review -->
+
+<!-- There are many missing rows in the data. While complete data screening will not be determined until we've chosen both response and predictor variables, we can perform some prelimiries. -->
+
+<!-- We have inspected the data in Excel format manually, and have exported to CSV to read into R for analysis. For convenience, we have identified the columns of interest.  -->
+
+<!-- Two orange highlighted columns ('lbs_gained', 'pounds_gained') appear to be identical. We will include only `lbs_gained` -->
+
+<!-- Also from inspection, the column `Snumber` appears to uniquely identify observations, and when this column is empty, the remaining columns are also empty. Thus, we will use this to in a first pass to screen for missing data. -->
+
+```{r, echo=FALSE, results='hidden'}
 summary(metrics.dat[,c(yellow,orange)])
 ```
 
-There are two responses, gender and weightgain, that should be binomial. However, there are three levels.
+<!-- There are two responses, gender and weightgain, that should be binomial. However, there are three levels. -->
 
-```{r}
+```{r, echo=FALSE, results='hidden'}
 metrics.dat$gender[metrics.dat$gender==''] <- 'Missing'
 metrics.dat$weightgain[metrics.dat$weightgain==''] <- 'Missing'
 unique(metrics.dat$gender)
 unique(metrics.dat$weightgain)
 ```
 
-```{r}
+```{r, echo=FALSE, results='hidden'}
 metrics.dat$shift <- factor(metrics.dat$shift)
 metrics.dat$gender <- factor(metrics.dat$gender)
 metrics.dat$weightgain <- factor(metrics.dat$weightgain)
@@ -289,13 +356,18 @@ pairs(metrics.dat[,c(yellow,orange)])
 
 ## Selection of response variable. 
 
-We have proposed three response variables of interest as surrogates for weight gain, specifically `weightgain`, `pounds_gained`,and @@@@.
+We have proposed three response variables of interest as surrogates for weight gain, specifically `weightgain`, `pounds_gained`,and `beginning_BMI`.
 
 ### Pounds Gained
 Pounds gained is skewed data, so if this is our response variable, we would consider either data transformation, or a generalized linear model of the poisson family. 
 
 Also, there are 121 fewer responses to use, as those observations are missing.
 The box-whisker plot `pounds_gained` vs `shift` shows a curvolinear response. There should exist a straightforward model predicting weight_gained from shift. The relationship between weight_gained and Calculated `Total Met Minutes` would require further exploratory analysis.
+
+### BMI (Difference and Initial)
+Similar to the variable `lbs_gained`, the box-whisker plot of `shift` vs `BMI_diff` shows a relationship between the variables. However, this relationship is not as skewed nor as linear as that of `shift` and `lbs_gained`. The scatter plot of `CalcTMM` vs `BMI_diff` also looks similar to `CalcTMM` vs `lbs_gained`, however the relationship between `CalcTMM` vs `BMI_diff` appears less linear.  
+
+Given our findings, our preference is to  use the inital BMI as a predictor variable rather than response for either `lbs_gained` or `weightgain`. We would like feedback from the client as to which is preferred moving forward.
 
 ## Additional predictor variables.
 
@@ -304,7 +376,6 @@ The box-whisker plot `pounds_gained` vs `shift` shows a curvolinear response. Th
 - Does the client wish us to perform mutliple regression and variable selection with the "orange" highlighted variables?
 - Does the client wish us to perform multiple regression and variable selection with any additional variables in the original data file?
 
-## Scope of analysis
+<!-- ## Scope of analysis -->
 
-The questions of interest only reference two variables, while there are multiple highlighted data columns. The first suggests a single predictor variable, but it would be best to perform multiple regression
-
+<!-- The questions of interest only reference two variables, while there are multiple highlighted data columns. The first suggests a single predictor variable, but it would be best to perform multiple regression -->
