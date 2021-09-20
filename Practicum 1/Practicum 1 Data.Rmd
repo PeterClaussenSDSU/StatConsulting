@@ -1,11 +1,13 @@
 ---
 title: "Practicum 1"
 author:
-  - Peter Claussen
-  - Ben Derenge
-  - Stephanie Leibl
+- Peter Claussen
+- Ben Derenge
+- Stephanie Leibl
 date: "9/16/2021"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -19,9 +21,9 @@ metrics.dat <- metrics.dat[!is.na(metrics.dat$Snumber),]
 
 # Overview
 
-We have been given an Excel data file with data collected for a study from a call center. These data include health metric from **employees** gathered over an eight month period. 
+We have been given an Excel data file with data collected for a study from a call center. These data include health metrics from **employees** gathered over an eight month period. 
 
-Variables that are of particular interest have been highlighted in the original data, provided to us as an Excel file. These include variables relating to weight change,specifically, we will consider in this preliminary proposal the variables
+Variables that are of particular interest have been highlighted in the original data. These include variables relating to weight change and demographics. Specifically, we will consider in this preliminary proposal the variables
 
 ```{r,echo=FALSE}
 #define constants to be used as column selection arguments
@@ -57,10 +59,10 @@ We will use the convention that text rendered in `sans serif` font denote variab
 We will refer to as **SA1** and **SA2** in further discussion. We address *total metabolic minutes*, *weight gain* and *shift* in the following sections.
 
 
-# Total MET-minutes
+# Total MET minutes
 
-*Total MET Minutes* is a composite measure obtained from survey responses (International Physical Activity Questionnaire (IPAQ) short form) to estimate overall physical activity. Physical activity is divided into categories described as *vigorous*, *moderate* and *walking* 
-Total Metabolic Minutes is calculate from 3 data columns. We are given the formula
+*Total MET Minutes* is a composite measure obtained from survey responses (International Physical Activity Questionnaire (IPAQ) short form) to estimate overall physical activity. Physical activity is divided into categories described as *vigorous*, *moderate* and *walking*.  
+Total Metabolic Minutes can be calculated from 3 data columns. We are given the formula
 ```
 Total_met_min = 8*Vig_ex_time + 4*Mod_ex_time + 3.3*Walk_ex_time
 ```
@@ -69,13 +71,15 @@ to calculate *Total MET Minutes* from the data.
 
 `Total_met_min` contains many missing values. We will create a new data column, `CalcTMM` that is calclulated from existing data columns as given in the formula above. To visualize the number of missing values, we plot missing values as 0 in the following figure.
 
-```{r,fig.cap="Total MET Minutes calculated from data, plotted against the data column title Total_Met_Min"}
+```{r,fig.cap="Total MET Minutes calculated from data, plotted against the data column title Total_Met_Min",echo=FALSE}
 metrics.dat$Total_Met_Min[is.na(metrics.dat$Total_Met_Min)] <- 0
 metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time)
 
 plot(CalcTMM ~ Total_Met_Min,data=metrics.dat)
 abline(0,1,col='red')
 ```
+
+We can see that the original data column `Total_met_min` has a large number of missing values. If we use this data column as given, we will reduce the number of observations in the analysis. This graph also confirms that the formula given above was used to compute `Total_met_min` from the data.
 
 # Shift
 
@@ -244,6 +248,14 @@ pairs(metrics.dat[,c(yellow,orange)])
 ## Selection of response variable. 
 
 We have proposed three response variables of interest as surrogates for weight gain, specifically
+
+
+## Additional predictor variables.
+
+**SA1** and **SA2** include only one predictor variable each (`Total_Met_Min` and `shift`, respectively). This implies a simple regression of one-way ANOVA analysis. However, the data includes other demographic variables that may be confounded with the primary ("yellow") predictors
+
+- Does the client wish us to perform mutliple regression and variable selection with the "orange" highlighted variables?
+- Does the client wish us to perform multiple regression and variable selection with any additional variables in the original data file?
 
 ## Scope of analysis
 
