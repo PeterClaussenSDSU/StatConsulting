@@ -1,6 +1,9 @@
 ---
 title: "Practicum 1"
-author: "Peter Claussen"
+author:
+  - Peter Claussen
+  - Ben Derenge
+  - Stephanie Leibl
 date: "9/16/2021"
 output: html_document
 ---
@@ -9,64 +12,104 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Overview
-
-We have been given an Excel data file with data collected for a study from a call center. These data include health metric from **employees** gathered over an eight month period. 
-
-Variables that are of particular interest have been highlighted in the Excel file. These include variables relating to weight change. We have been tasked to provide an analysis to answer two questions:
-
-- Does total metabolic minutes have an effect on weight gain?
-- Does shift have an effect on weight gain?
-
-# Data Cleaning
-
-There are many missing rows in the data. While complete data screening will not be determined until we've chosen both response and predictor variables, we can perform some prelimiries.
-
-We have inspected the data in Excel format manually, and have exported to CSV to read into R for analysis. For convenience, we have identified the columns of interest. 
-
-Two orange highlighted columns ('lbs_gained', 'pounds_gained') appear to be identical. We will include only `lbs_gained`
-
-```{r}
-yellow <- c('shift','Total_Met_Min')
-orange <- c('gender', 'Age', 'height', 'weightgain', 'lbs_gained', 'BMI', 'Vig.ex.Time', 'Mod.ex.time', 'Walk.ex.Time')
-```
-
-Also from inspection, the column `Snumber` appears to uniquely identify observations, and when this column is empty, the remaining columns are also empty. Thus, we will use this to in a first pass to screen for missing data.
-
-```{r}
+```{r,echo=FALSE}
 metrics.dat <- read.csv('Practicum 1 Data.csv',header=TRUE)
 metrics.dat <- metrics.dat[!is.na(metrics.dat$Snumber),]
 ```
 
-```{r}
-summary(metrics.dat[,c(yellow,orange)])
+# Overview
+
+We have been given an Excel data file with data collected for a study from a call center. These data include health metric from **employees** gathered over an eight month period. 
+
+Variables that are of particular interest have been highlighted in the original data, provided to us as an Excel file. These include variables relating to weight change,specifically, we will consider in this preliminary proposal the variables
+
+```{r,echo=FALSE}
+#define constants to be used as column selection arguments
+yellow <- c('shift','Total_Met_Min')
+orange <- c('gender', 'Age', 'height', 'weightgain', 'lbs_gained', 'BMI', 'Vig.ex.Time', 'Mod.ex.time', 'Walk.ex.Time')
 ```
 
-There are two responses, gender and weightgain, that should be binomial. However, there are three levels.
 
-```{r}
-metrics.dat$gender[metrics.dat$gender==''] <- 'Missing'
-metrics.dat$weightgain[metrics.dat$weightgain==''] <- 'Missing'
-unique(metrics.dat$gender)
-unique(metrics.dat$weightgain)
+### Highlighted in yellow
+
+- `shift`
+- `Total_Met_Min`
+
+### Highlighted in orange
+- `gender`
+- `Age`
+- `height`
+- `weightgain`
+- `lbs_gained`
+- `BMI`
+- `Vig.ex.Time`
+- `Mod.ex.time`
+- `Walk.ex.Time`
+
+We will use the convention that text rendered in `sans serif` font denote variable or column names found in the original data set, or derived variables calculated from columns in the original data, while *italics* will denote real-world processes or phenomena of interest. Thus, `weightgain` denotes the data column in the original data file, while *weight gain* denotes some measure of the change in weight by individuals over the study period.
+
+
+. We have been tasked to provide an analysis to address two specific aims:
+
+- **(SA1)** Does *total metabolic minutes* have an effect on *weight gain*?
+- **(SA2)** Does *shift* have an effect on *weight gain*?
+
+We will refer to as **SA1** and **SA2** in further discussion. We address *total metabolic minutes*, *weight gain* and *shift* in the following sections.
+
+
+# Total MET-minutes
+
+*Total MET Minutes* is a composite measure obtained from survey responses (International Physical Activity Questionnaire (IPAQ) short form) to estimate overall physical activity. Physical activity is divided into categories described as *vigorous*, *moderate* and *walking* 
+Total Metabolic Minutes is calculate from 3 data columns. We are given the formula
+```
+Total_met_min = 8*Vig_ex_time + 4*Mod_ex_time + 3.3*Walk_ex_time
+```
+to calculate *Total MET Minutes* from the data.
+
+
+`Total_met_min` contains many missing values. We will create a new data column, `CalcTMM` that is calclulated from existing data columns as given in the formula above. To visualize the number of missing values, we plot missing values as 0 in the following figure.
+
+```{r,fig.cap="Total MET Minutes calculated from data, plotted against the data column title Total_Met_Min"}
+metrics.dat$Total_Met_Min[is.na(metrics.dat$Total_Met_Min)] <- 0
+metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time)
+
+plot(CalcTMM ~ Total_Met_Min,data=metrics.dat)
+abline(0,1,col='red')
 ```
 
-```{r}
-metrics.dat$shift <- factor(metrics.dat$shift)
-metrics.dat$gender <- factor(metrics.dat$gender)
-metrics.dat$weightgain <- factor(metrics.dat$weightgain)
+# Shift
+
+```{r,echo=FALSE, include=FALSE}
+#determine 
+unique(metrics.dat$shift)
 ```
 
-# Response Variables
+*Shift* takes values of the form `7am`, `8am`, `...`, `2pm`, `other`. There are some columns that have missing values for `shift`. We propose that $shift$ be modeled as an ordinal data type, with missing values grouped with `other` and `other` takes an ordinal value greater than `2pm`.
+
+```{r}
+metrics.dat$shift[metrics.dat$shift==''] <- 'other'
+shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other')
+metrics.dat$shift <- factor(metrics.dat$shift,shift.levels)
+summary(metrics.dat$shift)
+```
+
+
+# Weight Gain
+
 While the data include a variable (data column) named `weightgain`, we are asked to consider other reponse variables, including change in weight (`lbs_gained`) and change in BMI. Thus, our first task is to determine the appropriate response variable. The choice of response variable will dictate both choice of statistical method (i.e. logistic regression vs linear regression) and methods for data cleaning.
 
 ## weightgain (Binomial Response)
 
-A quick plot to visualize
+`weightgain` in the original data contains missing values. 
 
-```{r}
-metrics.dat$Total_Met_Min[is.na(metrics.dat$Total_Met_Min)] <- 0
-plot(weightgain ~ Total_Met_Min,data=metrics.dat)
+```{r,echo=FALSE}
+metrics.dat$weightgain <- factor(metrics.dat$weightgain)
+```
+
+
+```{r, fig.width=12,fig.height=6,fig.cap="`weightgain` versus Total MET Minutes (calculated) and Shift"}
+par(mfrow=c(1,2))
+plot(weightgain ~ CalcTMM,data=metrics.dat)
 plot(weightgain ~ shift,data=metrics.dat)
 ```
 
@@ -78,7 +121,7 @@ At first glance, this appears to be a logistic regression - the response variabl
 
 BMI at the end of the study period has been recorded, while initial BMI has not. We can, however, calculate an initial BMI from other data columns.
 
-"Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches" 
+"Beginning BMI is unknown. The beginning weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate beginning BMI; not that this calculation differs whether using kg/meters or pounds/inches"
 ```{r}
 # Calculate body weight at 8 months
 metrics.dat['beginning_bweight'] <- metrics.dat$bweight - metrics.dat$pounds_gained
@@ -142,38 +185,49 @@ hist(log(metrics.dat[which(metrics.dat$gender=='Male'), 'BMI']), main="Log of Ma
 
 ```
 
-# Predictor Variables
-
-Total Metabolic Minutes is calculate from 3 data columns; this variable is missing for many rows. We are given the formula
-
-```
-Total_met_min = 8*Vig_ex_time + 4*Mod_ex_time + 3.3*Walk_ex_time
-```
 
 
-```{r}
-metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time)
 
-plot(CalcTMM ~ Total_Met_Min,data=metrics.dat)
-abline(0,1,col='red')
-plot(weightgain ~ CalcTMM,data=metrics.dat)
-```
 
+
+
+# Data Review
+
+There are many missing rows in the data. While complete data screening will not be determined until we've chosen both response and predictor variables, we can perform some prelimiries.
+
+We have inspected the data in Excel format manually, and have exported to CSV to read into R for analysis. For convenience, we have identified the columns of interest. 
+
+Two orange highlighted columns ('lbs_gained', 'pounds_gained') appear to be identical. We will include only `lbs_gained`
+
+Also from inspection, the column `Snumber` appears to uniquely identify observations, and when this column is empty, the remaining columns are also empty. Thus, we will use this to in a first pass to screen for missing data.
 
 ```{r}
-plot(lbs_gained ~ CalcTMM,data=metrics.dat)
+summary(metrics.dat[,c(yellow,orange)])
+```
+
+There are two responses, gender and weightgain, that should be binomial. However, there are three levels.
+
+```{r}
+metrics.dat$gender[metrics.dat$gender==''] <- 'Missing'
+metrics.dat$weightgain[metrics.dat$weightgain==''] <- 'Missing'
+unique(metrics.dat$gender)
+unique(metrics.dat$weightgain)
 ```
 
 ```{r}
-plot(lbs_gained ~ weightgain,data=metrics.dat)
+metrics.dat$shift <- factor(metrics.dat$shift)
+metrics.dat$gender <- factor(metrics.dat$gender)
+metrics.dat$weightgain <- factor(metrics.dat$weightgain)
 ```
 
 
-```{r,fig.width=10,fig.height=10}
-pairs(metrics.dat[,c(yellow,orange)])
-```
 
-This summary doesn't include missing values. To visualize, let's set NA to 0
+
+# Other Predictor Variables
+
+
+
+**TODO**
 
 ```{r}
 metrics.dat[is.na(metrics.dat)] <- 0
@@ -184,4 +238,14 @@ pairs(metrics.dat[,c(yellow,orange)])
 ```
 
 
+
+# Points for consideration
+
+## Selection of response variable. 
+
+We have proposed three response variables of interest as surrogates for weight gain, specifically
+
+## Scope of analysis
+
+The questions of interest only reference two variables, while there are multiple highlighted data columns. The first suggests a single predictor variable, but it would be best to perform multiple regression
 
