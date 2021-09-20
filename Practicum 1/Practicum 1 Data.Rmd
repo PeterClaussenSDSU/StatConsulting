@@ -171,7 +171,7 @@ dev.off()
 ```
  
 To look at the difference between the initial BMI and the final BMI for call center employees, we created a new column (`BMI_diff`) by subtracting the initial BMI from the final BMI. Thus, in this column, positive values represent increases in BMI over the eight month period.
-```{r, echo=FALSE, results='hide'}
+```{r, echo=FALSE}
 # Create a BMI_diff column to show BMI change over the 8 months
 metrics.dat['BMI_diff'] <- metrics.dat$BMI - metrics.dat$beginning_BMI
 
