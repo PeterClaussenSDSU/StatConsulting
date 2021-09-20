@@ -192,13 +192,11 @@ plot(temp, metrics.dat$BMI)
 abline(0,1,col='red')
 ```
 
-Observe plot of (`shift`) vs (`BMI_diff`)
+Observe plots of (`shift`) and (`CalcTMM`) vs (`BMI_diff`)
 ```{r}
+par(mfrow=c(1,2))
 plot(metrics.dat$shift, metrics.dat$BMI_diff, xlab='Shift', ylab='Difference in BMI')
-```
 
-Observe plot of (`CalcTMM`) vs (`BMI_diff`)
-```{r}
 plot(metrics.dat$CalcTMM, metrics.dat$BMI_diff, xlab='CalcTMM', ylab='Difference in BMI')
 ```
 
