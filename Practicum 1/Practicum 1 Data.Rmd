@@ -6,8 +6,9 @@ author:
 - Stephanie Liebl
 date: "9/16/2021"
 output:
-  html_document: default
+  word_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -100,7 +101,7 @@ summary(metrics.dat$shift)
 
 # Weight Gain
 
-While the data include a variable (data column) named `weightgain`, we are asked to consider other reponse variables, including change in weight (`lbs_gained`) and change in BMI. Thus, our first task is to determine the appropriate response variable. The choice of response variable will dictate both choice of statistical method (i.e. logistic regression vs linear regression) and methods for data cleaning.
+While the data include a variable (data column) named `weightgain`, we are asked to consider other response variables, including change in weight (`lbs_gained`) and change in BMI. Thus, our first task is to determine the appropriate response variable. The choice of response variable will dictate both choice of statistical method (i.e. logistic regression vs linear regression) and methods for data cleaning.
 
 ## weightgain (Binomial Response)
 
@@ -120,18 +121,19 @@ plot(weightgain ~ shift,data=metrics.dat)
 At first glance, this appears to be a logistic regression - the response variable (weightgain) should be binary (Yes/No). However, we are asked to consider alternate response variables (BMI, pounds gained) as markers for the general response "weight gain', as opposed to the specific data variable 'weightgain'
 
 ## Pounds gained (Continuous Response)
-The 'pounds_gained' columns contains only nonnegative integer values and missing values. This implies every known observation gained weight. Checking corresponding values in the binary `weightgain` column reveals all the NA in `pounds_gaine`' are "No" in `weightgain`. This will affect the interpretation of SA.1 and SA.2. The client will need to specify if we concerned about only magnitude of weight gained, and completely ignore weight lost. Or, analyze the factors associated with a binary outcome of 'any weight lost' vs 'any weight gained'. 
+The 'pounds_gained' columns contains only non-negative integer values and missing values. This implies every known observation has gained weight. Checking corresponding values in the  `weightgain` column confirms all the NA in `pounds_gained` are "No" in `weightgain`. This will affect the interpretation of SA.1 and SA.2. To use `pounds_gained` as the response variable, we would be ignoring all observations who lost weight.
 
 
-### Excluding 120 missing from `pounds_gained`
-Taking the first approach, we would only be concerned with observation that gained weight, excluding 120 missing rows and 1 zero.
+### Plots of Pounds_Gained
+120 missing rows and 1 row zero need to be excluded for the following plots.
 ```{r}
 g <- subset(metrics.dat, metrics.dat$pounds_gained >0)
-par(mfrow=c(1,2))
-hist(g$pounds_gained,breaks=30)
-hist(log(g$pounds_gained),breaks=30)
+##par(mfrow=c(1,2))
+#hist(g$pounds_gained,breaks=30)
+#hist(log(g$pounds_gained),breaks=30)
+#The column `pounds_gained` can be log transformed, to adjusted its skew.
+
 ```
-The column `pounds_gained` can be log transformed, to adjusted its skew.
 
 ```{r, echo=FALSE}
 #shift vs lbs gained
@@ -146,17 +148,17 @@ s <- ordered(g$shift, levels=c("7am","8am","9am","10am","11am","12pm","1pm","2pm
 par(mfrow=c(1,2))
 boxplot(pounds_gained ~ s, data=g, xlab="shift")
 
-plot(g$CalcTMM, g$pounds_gained)
+plot(g$CalcTMM, g$pounds_gained, main="Calculated TMM vs Pounds Gained")
 #plot(g$CalcTMM, log(g$pounds_gained))
 ```
-The bar plot above suggest shift does have potential to predict pounds_gained. The column 'pounds_gained' seems to decrease on average as shifts move later into the day, with an exception for the 2pm shift, which looks closest to  7am and not like 1pm. Missing shifts appear to have gained the most weight of all the shifts. This plot supports that notion that shifts could be ranked as opposed to treating shifts like independent factors.
+The bar plot above suggest shift does have potential to predict pounds_gained. The column 'pounds_gained' seems to decrease on average as shifts move later into the day, with an exception for the 2pm shift. If we don't classify Missing shifts into the "other" category, the missing group has the highest gained weight of all the shifts. As the plot shows some relation around adjacent shifts, we may rank the shifts as opposed to treating shifts like independent factors.
 
 
 ### Targeting Binary outcome with `weightgain`
 ```{r}
 boxplot(metrics.dat$Total_Met_Min,as.factor(metrics.dat$weightgain), ylab="Total Met Minutes", xlab="weightgain")
 ```
-If desired, `weightgain` can be predicted from Total_met_minutes, as most of the "No"s from `weighgain` have NAs or zeros from `total_met_minutes`. This might change if we predict the missing TMM values using the eqaution from earlier.
+If desired, `weightgain` can be predicted from Total_met_minutes, as most of the "No"s from `weighgain` have NAs or zeros from `total_met_minutes`. This might change if we predict the missing TMM values using the equation from earlier.
 
 
 
@@ -359,15 +361,16 @@ pairs(metrics.dat[,c(yellow,orange)])
 We have proposed three response variables of interest as surrogates for weight gain, specifically `weightgain`, `pounds_gained`,and `beginning_BMI`.
 
 ### Pounds Gained
-Pounds gained is skewed data, so if this is our response variable, we would consider either data transformation, or a generalized linear model of the poisson family. 
+The skew of Pounds gained should be addressed. If this is our response variable, we would consider either data transformation, or a generalized linear model of the poisson family. 
 
-Also, there are 121 fewer responses to use, as those observations are missing.
-The box-whisker plot `pounds_gained` vs `shift` shows a curvolinear response. There should exist a straightforward model predicting weight_gained from shift. The relationship between weight_gained and Calculated `Total Met Minutes` would require further exploratory analysis.
+Using `Pounds_gained` would result in 121 fewer responses.
+
+The box-whisker plot `pounds_gained` vs `shift` shows a curvolinear response. We should be able to create a straightforward model predicting `weight_gained` from shift. The relationship between weight_gained and Calculated `Total Met Minutes` would require further exploratory analysis, as any relationship is not appearent from the scatterplot.
 
 ### BMI (Difference and Initial)
 Similar to the variable `lbs_gained`, the box-whisker plot of `shift` vs `BMI_diff` shows a relationship between the variables. However, this relationship is not as skewed nor as linear as that of `shift` and `lbs_gained`. The scatter plot of `CalcTMM` vs `BMI_diff` also looks similar to `CalcTMM` vs `lbs_gained`, however the relationship between `CalcTMM` vs `BMI_diff` appears less linear.  
 
-Given our findings, our preference is to  use the inital BMI as a predictor variable rather than response for either `lbs_gained` or `weightgain`. We would like feedback from the client as to which is preferred moving forward.
+Given our findings, our preference is to  use the initial BMI as a predictor variable rather than response for either `lbs_gained` or `weightgain`. We would like feedback from the client as to which is preferred moving forward.
 
 ## Additional predictor variables.
 
