@@ -6,9 +6,9 @@ author:
 - Stephanie Liebl
 date: "9/16/2021"
 output:
-  html_document: default
-  word_document: default
   pdf_document: default
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -436,6 +436,7 @@ par(mfrow=c(1,1))
 hist(metrics.dat$pounds_gained)
 ```
 
+# Zero-Inflated Poisson
 
 ```{r}
 library(pscl)
