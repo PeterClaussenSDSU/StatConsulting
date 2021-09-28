@@ -1,0 +1,446 @@
+---
+title: "Practicum 1"
+author:
+- Peter Claussen
+- Ben Derenge
+- Stephanie Liebl
+date: "9/16/2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=FALSE}
+metrics.dat <- read.csv('Practicum 1 Data.csv',header=TRUE)
+metrics.dat <- metrics.dat[!is.na(metrics.dat$Snumber),]
+```
+
+# Overview
+
+We have been given an Excel data file with data collected for a study from a call center. These data include health metrics from **employees** gathered over an eight month period. 
+
+Variables that are of particular interest have been highlighted in the original data. These include variables relating to weight change and demographics. Specifically, we will consider in this preliminary proposal the variables
+
+```{r,echo=FALSE}
+#define constants to be used as column selection arguments
+yellow <- c('shift','Total_Met_Min')
+orange <- c('gender', 'Age', 'height', 'weightgain', 'lbs_gained', 'BMI', 'Vig.ex.Time', 'Mod.ex.time', 'Walk.ex.Time')
+```
+
+
+### Highlighted in yellow
+
+- `shift`
+- `Total_Met_Min`
+
+### Highlighted in orange
+- `gender`
+- `Age`
+- `height`
+- `weightgain`
+- `lbs_gained`
+- `BMI`
+- `Vig.ex.Time`
+- `Mod.ex.time`
+- `Walk.ex.Time`
+
+We will use the convention that text rendered in `sans serif` font denote variable or column names found in the original data set, or derived variables calculated from columns in the original data, while *italics* will denote real-world processes or phenomena of interest. Thus, `weightgain` denotes the data column in the original data file, while *weight gain* denotes some measure of the change in weight by individuals over the study period.
+
+
+. We have been tasked to provide an analysis to address two specific aims:
+
+- **(SA1)** Does *total metabolic minutes* have an effect on *weight gain*?
+- **(SA2)** Does *shift* have an effect on *weight gain*?
+
+We will refer to as **SA1** and **SA2** in further discussion. We address *total metabolic minutes*, *weight gain* and *shift* in the following sections.
+
+
+# Total MET minutes
+
+*Total MET Minutes* is a composite measure obtained from survey responses (International Physical Activity Questionnaire (IPAQ) short form) to estimate overall physical activity. Physical activity is divided into categories described as *vigorous*, *moderate* and *walking*.  
+*Total MET Minutes* can be calculated from 3 data columns. We are given the formula
+```
+Total_met_min = 8*Vig_ex_time + 4*Mod_ex_time + 3.3*Walk_ex_time
+```
+to calculate *Total MET Minutes* from the data.
+
+
+`Total_met_min` contains many missing values. We will create a new data column, `CalcTMM` that is calculated from existing data columns as given in the formula above. To visualize the number of missing values, we plot missing values as 0 in the following figure.
+
+```{r,fig.cap="Total MET Minutes calculated from data, plotted against the data column title Total_Met_Min",echo=FALSE}
+metrics.dat$Total_Met_Min[is.na(metrics.dat$Total_Met_Min)] <- 0
+metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time)
+
+plot(CalcTMM ~ Total_Met_Min,data=metrics.dat)
+abline(0,1,col='red')
+```
+
+We can see that the original data column `Total_met_min` has a large number of missing values. If we use this data column as given, we will reduce the number of observations in the analysis. This graph also confirms that the formula given above was used to compute `Total_met_min` from the data.
+
+# Shift
+
+```{r,echo=FALSE, include=FALSE}
+#determine 
+unique(metrics.dat$shift)
+```
+
+*Shift* takes values of the form `7am`, `8am`, `...`, `2pm`, `other`. There are some columns that have missing values for `shift`. We propose that $shift$ be modeled as an ordinal data type, with missing values grouped with `other` and `other` takes an ordinal value greater than `2pm`.
+
+```{r}
+metrics.dat$shift[metrics.dat$shift==''] <- 'other'
+shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other')
+metrics.dat$shift <- factor(metrics.dat$shift,shift.levels)
+summary(metrics.dat$shift)
+```
+
+
+# Weight Gain
+
+While the data include a variable (data column) named `weightgain`, we are asked to consider other response variables, including change in weight (`lbs_gained`) and change in BMI. Thus, our first task is to determine the appropriate response variable. The choice of response variable will dictate both choice of statistical method (i.e. logistic regression vs linear regression) and methods for data cleaning.
+
+## weightgain (Binomial Response)
+
+```{r,echo=FALSE}
+metrics.dat$weightgain <- factor(metrics.dat$weightgain)
+```
+
+
+```{r, fig.width=12,fig.height=6,fig.cap="`weightgain` versus Total MET Minutes (calculated) and Shift", echo=FALSE}
+par(mfrow=c(1,2))
+plot(weightgain ~ CalcTMM,data=metrics.dat)
+plot(weightgain ~ shift,data=metrics.dat)
+```
+
+At first glance, this appears to be a logistic regression - the response variable (weightgain) should be binary (Yes/No), ignoring a small number of missing values represented as light gray blocks in the plot. However, we are asked to consider alternate response variables (BMI, pounds gained) as markers for the general response "weight gain', as opposed to the specific data variable 'weightgain'
+
+## Pounds gained (Continuous Response)
+The `pounds_gained` columns contains only non-negative integer values and missing values. This implies every known observation has gained weight. Checking corresponding values in the  `weightgain` column confirms all the NA in `pounds_gained` are "No" in `weightgain`. This will affect the interpretation of SA.1 and SA.2. To use `pounds_gained` as the response variable, we would be ignoring all observations who lost weight.
+
+
+### Plots of Pounds_Gained
+120 missing rows and 1 row zero need to be excluded for the following plots.
+```{r, echo=FALSE}
+g <- subset(metrics.dat, metrics.dat$pounds_gained >0)
+##par(mfrow=c(1,2))
+#hist(g$pounds_gained,breaks=30)
+#hist(log(g$pounds_gained),breaks=30)
+#The column `pounds_gained` can be log transformed, to adjusted its skew.
+
+```
+
+```{r, echo=FALSE}
+#shift vs lbs gained
+#$ts <- as.factor((g$shift))
+#plot(g$ts,log(g$pounds_gained), ylab="pounds_gained", xlab="shift")
+#plot(g$shift,g$shift)
+#plot(as.factor(g$shift),log(g$pounds_gained), ylab="pounds_gained", ###xlab="shift")
+
+#table(g$shift)
+s <- ordered(g$shift, levels=c("7am","8am","9am","10am","11am","12pm","1pm","2pm","Missing","other"))
+#boxplot(pounds_gained ~ s, data=g)
+par(mfrow=c(1,2))
+boxplot(pounds_gained ~ s, data=g, xlab="shift")
+
+plot(g$CalcTMM, g$pounds_gained, main="Calculated TMM vs Pounds Gained")
+#plot(g$CalcTMM, log(g$pounds_gained))
+```
+The bar plot above suggest shift does have potential to predict pounds_gained. The column 'pounds_gained' seems to decrease on average as shifts move later into the day, with an exception for the 2pm shift. If we don't classify Missing shifts into the "other" category, the missing group has the highest gained weight of all the shifts. As the plot shows some relation around adjacent shifts, we may rank the shifts as opposed to treating shifts like independent factors.
+
+
+### Targeting Binary outcome with `weightgain`
+```{r, echo=FALSE}
+boxplot(metrics.dat$Total_Met_Min,as.factor(metrics.dat$weightgain), ylab="Total Met Minutes", xlab="weightgain")
+```
+If desired, `weightgain` can be predicted from Total_met_minutes, as most of the "No"s from `weighgain` have NAs or zeros from `total_met_minutes`. This might change if we predict the missing TMM values using the equation from earlier.
+
+
+
+
+
+
+## Change in BMI
+
+<!-- #### Start of Stephanie's Additions -->
+BMI at the end of the study period has been recorded, while initial BMI has not. We can, however, calculate an initial BMI from other data columns. We calculated the initial BMI using the following calculation: `initial_BMI`=`bweight`/(`height`^2) * 703
+
+<!-- "Initial BMI is unknown. The initial weight can be calculated by body weight at 8 months –pounds gained. Then this value along with the height variable can be used to calculate initial BMI; not that this calculation differs whether using kg/meters or pounds/inches"  -->
+
+```{r, echo=FALSE,results='hide'}
+# Calculate body weight at 8 months
+metrics.dat['initial_bweight'] <- metrics.dat$bweight - metrics.dat$pounds_gained
+
+# Need to account for instances where body weight is not entered
+metrics.dat$initial_bweight[metrics.dat$initial_bweight<='0'] <- '0'
+
+# Take a look at all BMI values
+unique(metrics.dat$BMI)
+
+# Calculate initial BMI -- internet tells me BMI=(weight/height^2) * 703
+# Since height values ~60/65, I am assuming they are inches not meters
+metrics.dat['initial_bweight'] <- as.numeric(metrics.dat$initial_bweight)
+metrics.dat['initial_BMI'] <- (metrics.dat$initial_bweight / (metrics.dat$height)^2)*703
+
+# ignore non-positive values
+metrics.dat$initial_BMI[is.nan(metrics.dat$initial_BMI)] <- 0
+metrics.dat$initial_BMI[!is.finite(metrics.dat$initial_BMI)] <- 0
+
+# Take a look at all initial_BMI values
+unique(metrics.dat$initial_BMI)
+
+```
+
+
+```{r, echo=FALSE, results='hide'}
+##Look at BMI in the beginning vs at the end
+
+# convert to numeric for calculations
+metrics.dat$initial_BMI <- as.numeric(metrics.dat$initial_BMI)
+
+# Are the means different? --Yes, BMI is bigger than initial_BMI
+mean(metrics.dat$initial_BMI)
+mean(metrics.dat$BMI)
+```
+
+
+```{r, echo=FALSE, results='hidden'}
+#From the histograms of the employees' initial BMI and the employees' final BMI, we see that there is a slight shift to the right in the frequencies in the histogram for Final BMI. This suggests to us that there were higher numbers of higher BMI among the employees. If BMI is used as our response variable, we will look greater at the relationship between initial BMI and final BMI, as well as the relationship between shift and BMI, and total metabolic minutes and BMI, respectively. 
+
+# Visualize the columns
+par(mfrow=c(1,2))
+
+metrics.dat$initial_BMI[metrics.dat$initial_BMI==0] <- NA
+hist(as.numeric(metrics.dat$initial_BMI),main='Initial BMI', xlab='Initial BMI')
+
+metrics.dat$BMI[metrics.dat$BMI==0] <- NA
+hist(as.numeric(metrics.dat$BMI), main='Final BMI', xlab='Final BMI')
+```
+
+```{r, echo=FALSE, results='hide'}
+# reset par() 
+dev.off()
+```
+
+In the scatter plot visualizing (`initial_BMI`) versus final BMI ('`BMI`'), it appears that there is a strong linear relationship between the variables. The scatter plot also suggests that (`metrics.dat$BMI`) is frequently greater than (`metrics.dat$initial_BMI`). 
+
+```{r, echo=FALSE}
+# Look at relationship between BMI and initial BMI -- appears that BMI only increases or stays the same over time
+plot(metrics.dat$initial_BMI, metrics.dat$BMI, xlab='Initial BMI', ylab='Final BMI')
+abline(0,1,col='red')
+```
+
+<!-- ```{r, echo=FALSE, results='hidden'} -->
+<!-- #The following histograms aim to see if there is any apparent relationship between gender and BMI gain in this dataset. It appears there is a difference in histogram shapes for female initial BMI and female final BMI. If BMI is chosen to be the response variable, these variables will be looked at more closely to determine if there is a positive/negative relationship. -->
+
+<!-- # To view all plots together -->
+<!-- par(mfrow=c(2,2)) -->
+
+<!-- # Female Initial BMI -->
+<!-- hist((metrics.dat[which(metrics.dat$gender=='Female'), 'initial_BMI']), main="Female Initial BMI", xlab='Gender is Female') -->
+
+<!-- # Male Initial BMI -->
+<!-- hist((metrics.dat[which(metrics.dat$gender=='Male'), 'initial_BMI']), main="Male Initial BMI", xlab='Gender is Male') -->
+
+<!-- # Female BMI -->
+<!-- hist((metrics.dat[which(metrics.dat$gender=='Female'), 'BMI']), main="Female BMI", xlab='Gender is Female') -->
+
+<!-- # Male BMI -->
+<!-- hist((metrics.dat[which(metrics.dat$gender=='Male'), 'BMI']), main="Male BMI", xlab='Gender is Male') -->
+
+<!-- ``` -->
+
+```{r, echo=FALSE, results='hide'}
+# return to default par() options
+dev.off()
+```
+ 
+To look at the difference between the initial BMI and the final BMI for call center employees, we created a new column (`BMI_diff`) by subtracting the initial BMI from the final BMI. Thus, in this column, positive values represent increases in BMI over the eight month period.
+```{r, echo=FALSE, results='hidden'}
+# Create a BMI_diff column to show BMI change over the 8 months
+metrics.dat['BMI_diff'] <- metrics.dat$BMI - metrics.dat$initial_BMI
+
+#max(na.omit(metrics.dat$BMI_diff))
+#min(na.omit(metrics.dat$BMI_diff))
+
+# need to look at this without the zeros that are from not having BMI values
+plot(metrics.dat$BMI_diff)
+```
+
+The BMI calculation is dependent on whether weight is a measure of pounds or kilograms. To ensure that the BMI values in the given dataset are correct, we manually calculated the BMI using the following formula: `bweight`/(`height`^2)*703. We then plotted our calculated BMI against the given BMI with a y=x line to verify the values are all the same.
+```{r, echo=TRUE}
+# Were the BMI calculations correct?
+# BMI = (weight/height^2)*703
+CalcBMI <- ''
+CalcBMI <- ((metrics.dat$bweight)/(metrics.dat$height)^2)*703
+
+plot(CalcBMI, metrics.dat$BMI)
+abline(0,1,col='red')
+```
+
+If BMI is chosen to be the response variable, two relationships to be examined are `shift` and `BMI_diff` as well as `CalcTMM` and `BMI_diff`.  
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+plot(metrics.dat$shift, metrics.dat$BMI_diff, xlab='Shift', ylab='Difference in BMI')
+
+plot(metrics.dat$CalcTMM, metrics.dat$BMI_diff, xlab='CalcTMM', ylab='Difference in BMI')
+```
+
+<!-- Observe plot of (`Gender`) vs (`BMI_Diff`) -->
+<!-- ```{r} -->
+<!-- plot(metrics.dat$gender, metrics.dat$BMI_diff) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- par(mfrow=c(1,2)) -->
+<!-- plot(metrics.dat$initial_BMI,metrics.dat$lbs_gained) -->
+<!-- plot(metrics.dat$lbs_gained,metrics.dat$BMI_diff) -->
+<!-- ``` -->
+
+<!-- #### End of Stephanie's Additions -->
+
+<!-- # Data Review -->
+
+<!-- There are many missing rows in the data. While complete data screening will not be determined until we've chosen both response and predictor variables, we can perform some preliminaries. -->
+
+<!-- We have inspected the data in Excel format manually, and have exported to CSV to read into R for analysis. For convenience, we have identified the columns of interest.  -->
+
+<!-- Two orange highlighted columns ('lbs_gained', 'pounds_gained') appear to be identical. We will include only `lbs_gained` -->
+
+<!-- Also from inspection, the column `Snumber` appears to uniquely identify observations, and when this column is empty, the remaining columns are also empty. Thus, we will use this to in a first pass to screen for missing data. -->
+
+<!-- There are two responses, gender and weightgain, that should be binomial. However, there are three levels. -->
+
+```{r, echo=FALSE, results='hidden'}
+metrics.dat$gender[metrics.dat$gender==''] <- 'Missing'
+metrics.dat$weightgain[metrics.dat$weightgain==''] <- 'Missing'
+unique(metrics.dat$gender)
+unique(metrics.dat$weightgain)
+```
+
+```{r, echo=FALSE, results='hidden'}
+metrics.dat$shift <- factor(metrics.dat$shift)
+metrics.dat$gender <- factor(metrics.dat$gender)
+metrics.dat$weightgain <- factor(metrics.dat$weightgain)
+```
+
+
+
+# Points for consideration
+
+## Selection of response variable. 
+
+We have proposed three response variables of interest as surrogates for weight gain, specifically `weightgain`, `pounds_gained`,and `initial_BMI`.
+
+### Pounds Gained
+The skew of `pounds_gained` should be addressed. If this is our response variable, we would consider either data transformation, or a generalized linear model of the poisson family. 
+
+Using `Pounds_gained` would result in 121 fewer responses.
+
+The box-whisker plot `pounds_gained` vs `shift` shows a curvilinear response. We should be able to create a straightforward model predicting `weight_gained` from shift. The relationship between weight_gained and Calculated `Total Met Minutes` would require further exploratory analysis, as any relationship is not apparent from the scatterplot.
+
+### BMI (Difference and Initial)
+
+Similar to the variable `lbs_gained`, the box-whisker plot of `shift` vs `BMI_diff` shows a relationship between the variables. However, this relationship is not as skewed nor as linear as that of `shift` and `lbs_gained`. The scatter plot of `CalcTMM` vs `BMI_diff` also looks similar to `CalcTMM` vs `lbs_gained`, however the relationship between `CalcTMM` vs `BMI_diff` appears less linear.  
+
+Given our findings, our preference is to  use the initial BMI as a predictor variable rather than response for either `lbs_gained` or `weightgain`. We would like feedback from the client as to which is preferred moving forward.
+
+## Additional predictor variables.
+
+**SA1** and **SA2** include only one predictor variable each (`Total_Met_Min` and `shift`, respectively). This implies a simple regression of one-way ANOVA analysis. However, the data includes other demographic variables that may be confounded with the primary ("yellow") predictors
+
+- Does the client wish us to perform multiple regression and variable selection with the "orange" highlighted variables?
+- Does the client wish us to perform multiple regression and variable selection with any additional variables in the original data file?
+
+We include, for further discussion, a pairs plot of the variables described in this document:
+
+```{r,echo=FALSE}
+metrics.dat[is.na(metrics.dat)] <- 0
+```
+
+```{r,,echo=FALSE,fig.width=10,fig.height=10}
+pairs(metrics.dat[,c(yellow,orange,'initial_BMI','BMI_diff','CalcTMM')])
+```
+
+This provides a visualization of the scope of the variable selection problem, if restricted to the highlight variables and additional variables described in this document. We also provide as an addendum a summary of the original data and calculated columns, as used in this document.
+
+```{r, echo=FALSE, results='hidden'}
+summary(metrics.dat[,c(yellow,orange,'initial_BMI','BMI_diff','CalcTMM')])
+```
+
+
+<!-- ## Scope of analysis -->
+
+<!-- The questions of interest only reference two variables, while there are multiple highlighted data columns. The first suggests a single predictor variable, but it would be best to perform multiple regression -->
+
+Finally, a brief note about typesetting. This document was produced in RMarkdown. The original `.Rmd` with R code and additional details of our preliminary analysis is available upon request.
+
+
+
+# Analysis
+
+## **(SA1)** Does *total metabolic minutes* have an effect on *weight gain*?
+
+```{r}
+metrics.dat$WG <- FALSE
+metrics.dat$WG[metrics.dat$weightgain=='Yes'] <- TRUE
+SA1.model1 <- glm(WG ~ Total_Met_Min, data=metrics.dat,family = binomial)
+summary(SA1.model1)
+SA1.model2 <- glm(WG ~ gender + Age + height + initial_BMI + shift + Total_Met_Min, data=metrics.dat,family = binomial)
+summary(SA1.model2)
+SA1.model3 <- glm(WG ~ gender + Age + height + initial_BMI + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=metrics.dat, family = binomial)
+summary(SA1.model3)
+
+library(MASS)
+best.model <- stepAIC(SA1.model3, direction = "both")
+summary(best.model)
+```
+
+
+```{r}
+metrics.dat$LBS <- round(metrics.dat$pounds_gained)
+SA1.model1 <- glm(LBS ~ Total_Met_Min, data=metrics.dat,family = poisson)
+summary(SA1.model1)
+SA1.model2 <- glm(LBS ~ gender + Age + height+ initial_BMI + shift + Total_Met_Min, data=metrics.dat,family = poisson)
+summary(SA1.model2)
+SA1.model3 <- glm(LBS ~ gender + Age + height+ initial_BMI + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=metrics.dat, family = poisson)
+summary(SA1.model3)
+
+best.model <- stepAIC(SA1.model3, direction = "both")
+summary(best.model)
+par(mfrow=c(2,2))
+plot(best.model)
+```
+
+
+```{r}
+SA1.model1 <- glm(pounds_gained ~ Total_Met_Min, data=metrics.dat,family = gaussian)
+summary(SA1.model1)
+SA1.model2 <- glm(pounds_gained ~ gender + Age + height+ initial_BMI + shift + Total_Met_Min, data=metrics.dat,family = gaussian)
+summary(SA1.model2)
+SA1.model3 <- glm(pounds_gained ~ gender + Age + height+ initial_BMI + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=metrics.dat, family = gaussian)
+summary(SA1.model3)
+
+best.model <- stepAIC(SA1.model3, direction = "both")
+summary(best.model)
+```
+
+
+```{r}
+par(mfrow=c(2,2))
+plot(best.model)
+par(mfrow=c(1,1))
+hist(metrics.dat$pounds_gained)
+```
+
+
+```{r}
+library(pscl)
+
+summary(m1 <- zeroinfl(LBS ~ Total_Met_Min, data = metrics.dat))
+summary(m2 <- zeroinfl(LBS ~ gender + Age + height+ initial_BMI + shift + Total_Met_Min, data = metrics.dat))
+summary(m3 <- zeroinfl(LBS ~ gender + Age + height+ initial_BMI + shift + Vig.ex.Time + Mod.ex.time + Walk.ex.Time, data = metrics.dat))
+```
