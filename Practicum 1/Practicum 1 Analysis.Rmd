@@ -149,12 +149,24 @@ summary(best.modelb)
 
 # Pounds Gained analysis
 
+We have information about net pounds gained. We assume that when `weightgained` is false, we can substitute a value of 0 for `pounds_gained`. This allows us to analyze a full data set; otherwise, we limit our observations. It is worth noting that we may be oversimplifying cases were `pounds_gained` may be negative, thus creating a zero-inflated data set.
 
 ```{r}
-gained.dat$LBS <- round(gained.dat$pounds_gained)
+sum(is.na(gained.dat$pounds_gained))
+gained.dat <- gained.dat[!is.na(gained.dat$pounds_gained),]
 ```
 
-### Simple gaussian model for pounds gained, with 'No' coded as 0
+```{r}
+par(mfrow=c(1,2))
+hist(gained.dat$pounds_gained, freq = FALSE)
+nonzero.dat <- gained.dat[gained.dat$pounds_gained>0,]
+hist(nonzero.dat$pounds_gained, freq = FALSE)
+```
+
+Pounds gained is highly skewed, even when zero observations are excluded. Thus, a linear model, with the assumption of normally distributed errors, may not be appropriate.
+
+## Linear model, gaussian errors
+
 ```{r}
 SA1.model1.lm <- lm(pounds_gained ~ CalcTMM, data=gained.dat)
 summary(SA1.model1.lm)
@@ -163,11 +175,17 @@ plot(SA1.model1.lm)
 ```
 
 ```{r}
+#equivalent model, just using glm instead of lm
 SA1.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = gaussian)
+SA1b.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian)
 summary(SA1.model1.gauss)
 par(mfrow=c(2,2))
 plot(SA1.model1.gauss)
 ```
+
+## Log-normal
+
+The distribution of weight gain is highly left-skewed. We may correct this by applying a transformation. We apply this to both the full data (with extra 0s) and the data limited to nonzero weight gain.
 
 ```{r}
 #error in log(0)
@@ -177,134 +195,131 @@ par(mfrow=c(2,2))
 plot(SA1.model1.log)
 ```
 
+An alternative method, may make it easier to compare models.
+
 ```{r}
 #error in log(0)
-SA1.model1.loggauss <- glm(pounds_gained+0.01 ~ Total_Met_Min, data=gained.dat,family = gaussian(link="log"))
+SA1.model1.loggauss <- glm(pounds_gained+0.01 ~ CalcTMM, data=gained.dat,family = gaussian(link="log"))
+SA1b.model1.loggauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian(link="log"))
 par(mfrow=c(2,2))
 plot(SA1.model1.loggauss)
 ```
-### Poisson family
 
+## Poisson regression
+
+Poisson regression requires integer values. We'll round pounds gained for this.
 ```{r}
-SA1.model1.LBS <- glm(LBS ~ CalcTMM, data=gained.dat,family = poisson)
-summary(SA1.model1.LBS)
-par(mfrow=c(2,2))
-plot(SA1.model1.LBS)
+gained.dat$LBS <- round(gained.dat$pounds_gained)
+nonzero.dat$LBS <- round(nonzero.dat$pounds_gained)
 ```
 
 ```{r}
+SA1.model1.poisson <- glm(LBS ~ CalcTMM, data=gained.dat,family = poisson)
+SA1b.model1.poisson <- glm(LBS ~ CalcTMM, data=nonzero.dat,family = poisson)
+summary(SA1.model1.poisson)
+par(mfrow=c(2,2))
+plot(SA1.model1.poisson)
+```
+
+We can, alternatively, fit a quasi-poisson family. This does not require integer values. This also provides a dispersion parameter that may help account for excess 0s.
+
+```{r}
 SA1.model1.quasi <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = quasipoisson)
+SA1b.model1.quasi <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = quasipoisson)
 summary(SA1.model1.quasi)
 par(mfrow=c(2,2))
 plot(SA1.model1.quasi)
 ```
+
+The shape of the distribution of weight gain suggests a gamma distribution. However, 
+```{r}
+SA1b.model1.Gamma <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = Gamma)
+summary(SA1b.model1.Gamma)
+par(mfrow=c(2,2))
+plot(SA1b.model1.Gamma)
+```
+
+## Model family comparison
+```{r}
+anova(SA1.model1.gauss,
+      SA1.model1.loggauss,
+      SA1.model1.poisson,
+      SA1.model1.quasi)
+anova(SA1b.model1.gauss,
+      SA1b.model1.loggauss,
+      SA1b.model1.poisson,
+      SA1b.model1.quasi,
+      SA1b.model1.Gamma)
+```
+
 
 ```{r}
 library(pscl)
 summary(zero.model1 <- zeroinfl(LBS ~ CalcTMM, data = gained.dat))
 ```
 
+
 ```{r}
-#SA1.model1.inv <- glm(LBS ~ Total_Met_Min, data=gained.dat,family = inverse.gaussian)
-#summary(SA1.model1.inv)
-
-SA1.model1.Gamma <- glm(LBS+0.01 ~ Total_Met_Min, data=gained.dat,family = Gamma)
-summary(SA1.model1.Gamma)
-
-#SA1.model1.GammaId <- glm(LBS ~ Total_Met_Min, data=gained.dat,family = Gamma(link="identity"))
-#summary(SA1.model1.GammaId)
-#SA1.model1.GammaId <- glm(LBS ~ Total_Met_Min, data=gained.dat,family = Gamma(link="log"))
-#summary(SA1.model1.GammaId)
-```
-
-
-```{r,eval=FALSE}
-par(mfrow=c(1,1))
+#par(mfrow=c(1,1))
 hist(gained.dat$pounds_gained, freq = FALSE,ylim=c(0,max(dpois(0:70, mean(gained.dat$pounds_gained)))))
-
-mean(gained.dat$pounds_gained)
-sd(gained.dat$pounds_gained)
 100*abs(sd(gained.dat$pounds_gained)-mean(gained.dat$pounds_gained))/mean(gained.dat$pounds_gained)
 lines(0:70,dpois(0:70,mean(gained.dat$pounds_gained)),col='red')
-
-
-nonzero <- gained.dat$pounds_gained[gained.dat$pounds_gained>2]
-
-hist(nonzero, freq = FALSE,ylim=c(0,max(dpois(0:70, mean(nonzero)))))
-lines(0:70,dpois(0:70,mean(nonzero)),col='red')
-mean(nonzero)
-sd(nonzero)
-100*abs(sd(nonzero)-mean(nonzero))/mean(nonzero)
+mean(gained.dat$pounds_gained)
+sd(gained.dat$pounds_gained)
 ```
 
-```{r,eval=FALSE}
+```{r}
+hist(nonzero.dat$pounds_gained, freq = FALSE,ylim=c(0,max(dpois(0:70, mean(nonzero.dat$pounds_gained)))))
+lines(0:70,dpois(0:70,mean(nonzero.dat$pounds_gained)),col='red')
+mean(nonzero.dat$pounds_gained)
+sd(nonzero.dat$pounds_gained)
+100*abs(sd(nonzero.dat$pounds_gained)-mean(nonzero.dat$pounds_gained))/mean(nonzero.dat$pounds_gained)
+```
+
+```{r}
 colors <- rep('red',dim(gained.dat)[1]) 
 colors[gained.dat$pounds_gained==0] <- 'blue'
-plot(pounds_gained~Total_Met_Min,gained.dat,col=colors)
-abline(lm(pounds_gained~Total_Met_Min,gained.dat))
-abline(lm(pounds_gained~Total_Met_Min,gained.dat[gained.dat$gained.dat>0,]),col='red')
+plot(pounds_gained~CalcTMM,gained.dat,col=colors)
+abline(lm(pounds_gained~CalcTMM,gained.dat))
+abline(lm(pounds_gained~CalcTMM,nonzero.dat),col='red')
 ```
-
-
 ```{r}
-SA1.model1.quasi <- update(SA1.model1.LBS, family=quasipoisson)
-summary(SA1.model1.quasi)
-```
+#missing values for gender
+sum(gained.dat$gender=='')
+gained.dat <- gained.dat[!gained.dat$gender=='',]
 
-
-
-
-
-```{r}
-SA1.model2.gauss <- glm(pounds_gained ~ gender + Age + height + shift + CalcTMM, data=gained.dat,family = gaussian)
-summary(SA1.model2.gauss)
-SA1.model3.gauss <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat, family = gaussian)
-summary(SA1.model3.gauss)
-```
-
-```{r,eval=FALSE,echo=FALSE,include=FALSE,warning=FALSE}
-best.model.gauss.lbs <- stepAIC(SA1.model3, direction = "both")
-
-summary(best.model.gauss.lbs)
+sum(is.na(gained.dat$Age))
+sum(is.na(gained.dat$height))
+sum(is.na(gained.dat$shift))
+sum(is.na(gained.dat$initial_BMI))
 ```
 
 ```{r}
-SA1.model2.LBS <- glm(LBS ~ gender + Age + height+ initial_BMI + shift + CalcTMM, data=gained.dat,family = poisson)
-summary(SA1.model2.LBS)
-SA1.model3.LBS <- glm(LBS ~ gender + Age + height+ initial_BMI + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat, family = poisson)
-summary(SA1.model3.LBS)
-```
-
-```{r,eval=FALSE,echo=FALSE,include=FALSE,warning=FALSE}
-best.model.LBS <- stepAIC(SA1.model3, direction = "both")
+SA12.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat,family = quasipoisson)
+SA12b.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=nonzero.dat,family = quasipoisson)
+summary(SA12.model4.quasi)
+summary(SA12b.model4.quasi)
 par(mfrow=c(2,2))
-plot(best.model.LBS)
-summary(best.model.LBS)
-```
-
-
-
-
-
-
-```{r,eval=FALSE}
-best.model.quasi <- update(best.model.LBS,family=quasipoisson)
-
-#par(mfrow=c(2,2))
-#plot(best.model.quasi)
-summary(best.model.quasi)
-```
-
-# Zero-Inflated Poisson
-
-```{r}
-# We can't use initial BMI, no 0 values
-summary(zero.model2 <- zeroinfl(LBS ~ gender +  + Age + + height + shift + CalcTMM, data = gained.dat))
+plot(SA12.model4.quasi)
 ```
 
 ```{r}
-summary(zero.model3 <- zeroinfl(LBS ~ gender + Age + height + shift + Vig.ex.Time + Mod.ex.time + Walk.ex.Time, data = gained.dat))
+par(mfrow=c(2,2))
+plot(SA12b.model4.quasi)
 ```
+
+
+```{r}
+zero.model4 <- zeroinfl(LBS ~ gender + Age + height + shift + Vig.ex.Time + Mod.ex.time + Walk.ex.Time + initial_BMI, data = gained.dat)
+summary(zero.model4)
+```
+
+
+
+
+
+
+
 
 Bootstrap the coefficients
 
