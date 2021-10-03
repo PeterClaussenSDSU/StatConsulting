@@ -161,10 +161,17 @@ summary(best.modelb)
 ```
 
 ## Model 6
-Observe BMIxshift, BMIxTMMcalc, BMI & likewise with bweight
-```{r}
-subset6.dat <- gained.dat[which(complete.cases(gained.dat[, c("initial_BMI", "shift", "CalcTMM")])),]
-summary(glm(WG~ initial_BMI*shift*CalcTMM, data=subset6.dat, family =binomial))
+Lastly, we wanted to observe the binomial models created from `initial_BMI`x`shift`x`CalcTMM` as well as `initial_bweight`x`shift`x`CalcTMM`. We then ran the stepAIC() function through both models, and obtained a lower AIC value for the model using `initial_BMI`x`shift`x`CalcTMM`. This suggests this model is simpler than the other. In this model, the following predictors had p-values <0.1: shift10am:CalcTMM, initial_BMI:shift10am:CalcTMM. This suggests that these products are significant in predicting whether an employee has gained weight.
+```{r, echo=FALSE}
+library(MASS)
+subset6a.dat <- gained.dat[which(complete.cases(gained.dat[, c("initial_BMI", "shift", "CalcTMM")])),]
+subset6a.model <- glm(WG~ initial_BMI*shift*CalcTMM, data=subset6a.dat, family =binomial)
+#summary(subset6a.model)
+summary(stepAIC(subset6a.model, direction="both"))
+
+subset6b.dat <- gained.dat[which(complete.cases(gained.dat[,c("initial_bweight", "shift", "CalcTMM")])),]
+subset6b.model <- glm(WG~ initial_bweight*shift*CalcTMM, data=subset6b.dat, family=binomial)
+stepAIC(subset6b.model, direction="both")
 
 ```
 
