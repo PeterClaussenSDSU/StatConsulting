@@ -4,7 +4,7 @@ author:
 - Peter Claussen
 - Ben Derenge
 - Stephanie Liebl
-date: "9/16/2021"
+date: "10/5/2021"
 output:
   pdf_document: default
   word_document: default
@@ -15,20 +15,23 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Data Processing
 
-
-# Analysis
-
-## Data Processing
-
+Our initial step in processing the 'Practicum 1 Data' data set was to remove any rows where the `Snumber` column was "NA". We identified the `Snumber` column as a unique identifier, and thus were only concerned with nonempty rows. Initially, the data set has 392 rows. After removing removing the 'NA' identifiers, we are left with 352 rows.
 ```{r}
 metrics.dat <- read.csv('Practicum 1 Data.csv',header=TRUE)
 metrics.dat <- metrics.dat[!is.na(metrics.dat$Snumber),]
+```
 
+Next, we verified that the column `Total_Met_Min` had correct computations. We created a separate column `CalcTMM` to check against the values in `Total_Met_Min`. In our observations of the `shift` variable, we discovered that there existed an 'other' category and missing values. We decided to refrain from combining these categories and created a 'missing' category for values of `shift` that were blank.
+```{r}
 metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time)
 
-metrics.dat$shift[metrics.dat$shift==''] <- 'missing'
-shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other','missing')
+#metrics.dat$shift[metrics.dat$shift==''] <- 'missing'
+#shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other','missing')
+
+metrics.dat$shift[metrics.dat$shift==''] <- 'other'
+shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other')
 metrics.dat$shift <- factor(metrics.dat$shift,shift.levels)
 summary(metrics.dat$shift)
 ```
@@ -40,6 +43,7 @@ table(metrics.dat$MissingLbs,metrics.dat$weightgain)
 
 
 We consider two subsets for analysis. First we create a data table that has appropriate values for `weightgain`. This will be the larger of the two data sets.
+Our original data set contained a binary 'yes/no' column titled `weightgain`. This column was missing data for four rows, and thus, we subset the data to obtain a data table with values for `weightgain` in all rows. This data table left us with 348 rows. It should be noted that the original data set contains a numeric `pounds_gained` column as well. This column had many missing values, but we were able to impute a '0' if we knew that row had a 'No' for `weightgain`. Lastly, we observed a single missing value for the column `CalcTMM`, and so we once more subset the data to obtain a table with values of `CalcTMM` for all rows.
 
 ```{r}
 gained.dat <- metrics.dat[metrics.dat$weightgain %in% c('Yes','No'),]
@@ -64,12 +68,13 @@ par(mfrow=c(1,2))
 boxplot(pounds_gained ~ WG,data=gained.dat,horizontal = TRUE)
 plot(WG~CalcTMM,data=gained.dat)
 ```
+
 # Analysis of Binary Response (WG)
 
 ## **(SA1)** Does *total metabolic minutes* have an effect on *weight gain*?
 
 ### Simple logistic regression
-
+The client provided us two specific aims to address in our analysis. We will begin with the first specific aim, which we will refer to as SA1. SA1 says, "Does total metabolic minutes have an effect on weight gain?". To address this question, we began by creating a simple linear regression model of our binary weight gain versus calculated total metabolic minutes. The summary output of this model suggests that `CalcTMM` has very little effect on weight gain, as the p-value for `CalcTMM` is 0.21, quite large.
 ```{r}
 SA1.model1 <- glm(WG ~ CalcTMM, data=gained.dat,family = binomial)
 summary(SA1.model1)
@@ -77,8 +82,9 @@ par(mfrow=c(2,2))
 plot(SA1.model1)
 ```
 
-- **(SA2)** Does *shift* have an effect on *weight gain*?
+## **(SA2)** Does *shift* have an effect on *weight gain*?
 
+The second specific aim given to us by the client says, "Does shift have an effect on weight gain?". To address this question, we began by creating a simple linear regression model of our binary weight gain versus shift. From the summary output of this model, we see that no value of shift seems to have much significance in the model. The p-value for each of these values is greater than 0.1, suggesting each has little effect on weight gain.
 ```{r}
 SA2.model1 <- glm(WG ~ shift, data=gained.dat,family = binomial)
 summary(SA2.model1)
@@ -87,127 +93,170 @@ plot(SA2.model1)
 ```
 
 # Model 2 Interactions
-
+After observing the models representing weight gain versus total met minutes and shift, respectively, we sought to examine whether `shift`*`CalcTMM` had an effect on weight gain.  
 ```{r}
-SA12.model2 <- glm(WG ~ shift+CalcTMM, data=gained.dat,family = binomial)
+SA12.model2 <- glm(WG ~ shift*CalcTMM, data=gained.dat,family = binomial)
 summary(SA12.model2)
+plot(metrics.dat$shift, metrics.dat$CalcTMM)
+plot(metrics.dat$shift,metrics.dat$CalcTMM)
 ```
 
 # Model 3 SA1 and 2 plus anthropometric variables
-
-
+The original data set included anthropometric variables such as `gender`, `Age`, `height`, and `BMI`. We wanted to inspect whether such variables effect weight gain, and so we created a generalized linear model including them. We began by including just variables for gender and age, and then height. It can be seen that the p-values for these variables in both models are large, suggesting little effect on weight gain.
 ```{r}
-SA12.model3a <- glm(WG ~ gender + Age + shift + CalcTMM, data=gained.dat,family = binomial)
+subset3a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "CalcTMM")])),]
+SA12.model3a <- glm(WG ~ gender + Age + shift + CalcTMM, data=subset3a.dat,family = binomial)
 summary(SA12.model3a)
 ```
 
 ```{r}
-SA12.model3b <- glm(WG ~ gender + Age + height +shift + CalcTMM, data=gained.dat,family = binomial)
+subset3b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height","shift", "CalcTMM")])),]
+SA12.model3b <- glm(WG ~ gender + Age + height +shift + CalcTMM, data=subset3b.dat,family = binomial)
 summary(SA12.model3b)
 ```
 
 # Model 4 Partition CalcTMM into components
-
-
+In the background information given to us by our client, it stated that the `Total_Met_Min` column was calculated by a combination of `Vig.ex.Time`, `Mod.ex.Time`, and `Walk.ex.Time`. Although as previously discovered, total met minutes as a whole does not have a large effect on weight gain, we wanted to determine whether its individual components have an effect. 
 ```{r}
-SA12.model4a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat,family = binomial)
+subset4a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time")])),]
+SA12.model4a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=subset4a.dat, family = binomial)
 summary(SA12.model4a)
 ```
 
 ```{r}
-SA12.model4b <- glm(WG ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat,family = binomial)
+subset4b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time")])),]
+SA12.model4b <- glm(WG ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=subset4b.dat, family = binomial)
 summary(SA12.model4b)
 ```
 
 
 # Model 5 - Model 4 plus BMI and initial body weight
 
-For these models, we may include BMI, or just the anthropometric variables used to calculate BMI
+For these models, we may include BMI, or just the anthropometric variables used to calculate BMI. Using the columns for body weight, height, and pounds gained, we were able to obtain `initial_BMI` and `initial_bweight` columns.
 ```{r}
 gained.dat['initial_bweight'] <- gained.dat$bweight - gained.dat$pounds_gained
 gained.dat['initial_BMI'] <- (gained.dat$initial_bweight / (gained.dat$height)^2)*703
 ```
 
+In the following models, we used the anthropometric variables, the individual total met minute components in addition to the initial BMI and initial body weight variables, respectively. We know that BMI is calculated using height and weight, so we avoided using all three (`initial_BMI`, `height`, `initial_bweight`) in a model to avoid confounding. We see that in the first model, `initial_BMI` has a small p-value and in the second model, `initial_bweight` has a small p-value. This suggests that the variables effect weight gain in their respective model. 
 ```{r}
-SA12.model4a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time + initial_BMI, data=gained.dat,family = binomial)
-summary(SA12.model4a)
+subset5a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time", "initial_BMI")])),]
+SA12.model5a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time + initial_BMI, data=subset5a.dat, family = binomial)
+summary(SA12.model5a)
 ```
 
 ```{r}
-SA12.model4b <- glm(WG ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time +initial_bweight, data=gained.dat,family = binomial)
-summary(SA12.model4b)
+subset5b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time", "initial_bweight")])),]
+SA12.model5b <- glm(WG ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time +initial_bweight, data=subset5b.dat, family = binomial)
+summary(SA12.model5b)
 ```
 
-```{r,eval=FALSE,echo=FALSE,include=FALSE,warning=FALSE}
+Lastly, we utilized the function 'stepAIC' to find the simplest model. We called this function twice--once with the model consisting of the anthropometric variables, the total met minutes components, shift, and initial body weight, and once with the model consisting of the same variables but instead of initial weight, we have initial BMI. 
+The stepAIC function suggest that the simplest model that includes initial BMI uses variables `gender` and `initial_BMI` as predictors. The simplest model that includes the initial body weight uses just `initial_bweight` as a predictor.
+
+```{r,echo=FALSE,include=FALSE,warning=FALSE}
 library(MASS)
-best.modela <- stepAIC(SA12.model4a, direction = "both")
+best.modela <- stepAIC(SA12.model5a, direction = "both")
+best.modelb <- stepAIC(SA12.model5b, direction = "both")
+```
+
+Thus, we cannot state, to statistical significance, that either specific aim 1 or aim 2 are true. We can, however, suggest that initial BMI and gender are better predictors of weight gain than either Total MET Minutes or shift. See the summary of the recommended model below.
+
+```{r}
 summary(best.modela)
-best.modelb <- stepAIC(SA12.model4b, direction = "both")
 summary(best.modelb)
+AIC(best.modela,best.modelb)
+```
+
+We find the best, simplest model for `weightgained` includes only the single predictor, `initial_bodyweight`.
+
+## Model 6
+
+Lastly, we wanted to observe the binomial models created from `initial_BMI`x`shift`x`CalcTMM` as well as `initial_bweight`x`shift`x`CalcTMM`. We then ran the stepAIC() function through both models, and obtained a lower AIC value for the model using `initial_BMI`x`shift`x`CalcTMM`. This suggests this model is simpler than the other. In this model, the following predictors had p-values <0.1: shift10am:CalcTMM, initial_BMI:shift10am:CalcTMM. This suggests that these products are significant in predicting whether an employee has gained weight.
+
+```{r, echo=FALSE}
+library(MASS)
+subset6a.dat <- gained.dat[which(complete.cases(gained.dat[, c("initial_BMI", "shift", "CalcTMM")])),]
+subset6a.model <- glm(WG~ initial_BMI*shift*CalcTMM, data=subset6a.dat, family =binomial)
+summary(subset6a.model)
+anova(subset6a.model)
+summary(stepAIC(subset6a.model, direction="both"))
+
+subset6b.dat <- gained.dat[which(complete.cases(gained.dat[,c("initial_bweight", "shift", "CalcTMM")])),]
+subset6b.model <- glm(WG~ initial_bweight*shift*CalcTMM, data=subset6b.dat, family=binomial)
+stepAIC(subset6b.model, direction="both")
+
 ```
 
 
-# Pounds Gained analysis
+# Analysis of Continuos Response (pounds gained)
 
-We have information about net pounds gained. We assume that when `weightgained` is false, we can substitute a value of 0 for `pounds_gained`. This allows us to analyze a full data set; otherwise, we limit our observations. It is worth noting that we may be oversimplifying cases were `pounds_gained` may be negative, thus creating a zero-inflated data set.
+## **(SA1)** Does *total metabolic minutes* have an effect on *weight gain*?
 
-```{r}
+We have information about net pounds gained. We assume that when `weightgained` is false, we can substitute a value of 0 for `pounds_gained`. This allows us to analyze a full data set; otherwise, we limit our observations. It is worth noting that we may be oversimplifying cases were `pounds_gained` may be negative, thus creating a censored or zero-inflated data set. Therefore, we consider all possible data, and the subset where pounds gained is non-zero.
+
+```{r,echo=FALSE}
 sum(is.na(gained.dat$pounds_gained))
 gained.dat <- gained.dat[!is.na(gained.dat$pounds_gained),]
 ```
 
-```{r}
-par(mfrow=c(1,2))
-hist(gained.dat$pounds_gained, freq = FALSE)
+```{r,echo=FALSE}
+#par(mfrow=c(1,2))
+#library(ggplot2)
+hist(gained.dat$pounds_gained, freq = FALSE,breaks=10)
+#ggplot(gained.dat,aes(pounds_gained,after_stat(density)))+geom_histogram()
 nonzero.dat <- gained.dat[gained.dat$pounds_gained>0,]
-hist(nonzero.dat$pounds_gained, freq = FALSE)
+hist(nonzero.dat$pounds_gained, freq = FALSE,breaks=10)
 ```
 
-Pounds gained is highly skewed, even when zero observations are excluded. Thus, a linear model, with the assumption of normally distributed errors, may not be appropriate.
+Pounds gained is highly skewed, even when zero observations are excluded. Thus, a linear model, with the assumption of normally distributed errors, may not be appropriate. We include a linear model here for reference only; this is not the recommended analysis.
 
-## Linear model, gaussian errors
+### Linear model, gaussian errors
 
 ```{r}
-SA1.model1.lm <- lm(pounds_gained ~ CalcTMM, data=gained.dat)
-summary(SA1.model1.lm)
+SA1.model1.lm <- lm(pounds_gained ~ CalcTMM, data=nonzero.dat)
+#summary(SA1.model1.lm)
 par(mfrow=c(2,2))
 plot(SA1.model1.lm)
 ```
 
-```{r}
+```{r,eval=FALSE,echo=FALSE}
 #equivalent model, just using glm instead of lm
 SA1.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = gaussian)
 SA1b.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian)
-summary(SA1.model1.gauss)
+#summary(SA1.model1.gauss)
 par(mfrow=c(2,2))
 plot(SA1.model1.gauss)
 ```
 
-## Log-normal
+### Square-root transform
 
-The distribution of weight gain is highly left-skewed. We may correct this by applying a transformation. We apply this to both the full data (with extra 0s) and the data limited to nonzero weight gain.
+The distribution of weight gain is highly left-skewed. We may correct this by applying a square-root transformation. We apply this to both the full data (with extra 0s) and the data limited to nonzero weight gain.
 
 ```{r}
 #error in log(0)
-SA1.model1.log <- lm(log(pounds_gained+0.1) ~ CalcTMM, data=gained.dat)
-summary(SA1.model1.log)
+SA1.model1.root <- lm(sqrt(pounds_gained) ~ CalcTMM, data=gained.dat)
+#summary(SA1.model1.root)
 par(mfrow=c(2,2))
-plot(SA1.model1.log)
+plot(SA1.model1.root)
 ```
 
-An alternative method, may make it easier to compare models.
+The square-root transformation does appear to improve upon the skewness of the data, although the residuals are not clearly normally distributed.
+
+### Log transformation
+
+The log transformation is also commonly used to correct skewed data. The log-transform, however, is not defined for 0 values. We include an model using the log transform for the non-zero pounds gained data. This is included for reference; we do not recommend analyzing these data using a log transformation.
 
 ```{r}
 #error in log(0)
-SA1.model1.loggauss <- glm(pounds_gained+0.01 ~ CalcTMM, data=gained.dat,family = gaussian(link="log"))
 SA1b.model1.loggauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian(link="log"))
 par(mfrow=c(2,2))
-plot(SA1.model1.loggauss)
+plot(SA1b.model1.loggauss)
 ```
 
-## Poisson regression
+### Poisson regression
 
-Poisson regression requires integer values. We'll round pounds gained for this.
+The square root transformation is commonly applied to count data. This suggests a possible Poisson model for pounds gained. Poisson regression requires integer values. We'll round pounds gained for this.
 ```{r}
 gained.dat$LBS <- round(gained.dat$pounds_gained)
 nonzero.dat$LBS <- round(nonzero.dat$pounds_gained)
@@ -215,86 +264,103 @@ nonzero.dat$LBS <- round(nonzero.dat$pounds_gained)
 
 ```{r}
 SA1.model1.poisson <- glm(LBS ~ CalcTMM, data=gained.dat,family = poisson)
-SA1b.model1.poisson <- glm(LBS ~ CalcTMM, data=nonzero.dat,family = poisson)
-summary(SA1.model1.poisson)
+#SA1b.model1.poisson <- glm(LBS ~ CalcTMM, data=nonzero.dat,family = poisson)
+#summary(SA1.model1.poisson)
 par(mfrow=c(2,2))
 plot(SA1.model1.poisson)
 ```
+
+This model provides a similar improvement on residual errors as did the square root transform. Thus, a Poisson model may be recommended for these data.
+
+### Quasi-poisson
 
 We can, alternatively, fit a quasi-poisson family. This does not require integer values. This also provides a dispersion parameter that may help account for excess 0s.
 
 ```{r}
 SA1.model1.quasi <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = quasipoisson)
-SA1b.model1.quasi <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = quasipoisson)
-summary(SA1.model1.quasi)
+#SA1b.model1.quasi <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = quasipoisson)
+#summary(SA1.model1.quasi)
 par(mfrow=c(2,2))
 plot(SA1.model1.quasi)
 ```
 
-The shape of the distribution of weight gain suggests a gamma distribution. However, 
+The shape of the distribution of weight gain suggests a gamma distribution. However, the gamma distribution is not defined for 0 values. We include a gamma family model for reference, but we do not recommend this model.
+
 ```{r}
 SA1b.model1.Gamma <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = Gamma)
-summary(SA1b.model1.Gamma)
+#summary(SA1b.model1.Gamma)
 par(mfrow=c(2,2))
 plot(SA1b.model1.Gamma)
 ```
 
-## Model family comparison
-```{r}
-anova(SA1.model1.gauss,
-      SA1.model1.loggauss,
-      SA1.model1.poisson,
-      SA1.model1.quasi)
-anova(SA1b.model1.gauss,
-      SA1b.model1.loggauss,
-      SA1b.model1.poisson,
-      SA1b.model1.quasi,
-      SA1b.model1.Gamma)
-```
+### Zero-inflated Poisson
 
+Of the statistical models considered to this point, the Poisson distribution family seems most suitable for these data. We now consider a zero-inflated Poisson (ZIP) analysis. 
+
+Briefly, ZIP defines a conditional probability model. The first stage is modeled as binomial - weight gain is either false (0 pounds gained) or true (a non-zero pounds gained value), with a defined probability. Then, conditional on weight gain being true, the remaining values are fit to a Poisson distribution. This is computed in R using the `pscl` library:
 
 ```{r}
 library(pscl)
-summary(zero.model1 <- zeroinfl(LBS ~ CalcTMM, data = gained.dat))
+SA1.model1.zero <- zeroinfl(LBS ~ CalcTMM, data = gained.dat)
+summary(SA1.model1.zero)
 ```
 
 
-```{r}
-#par(mfrow=c(1,1))
-hist(gained.dat$pounds_gained, freq = FALSE,ylim=c(0,max(dpois(0:70, mean(gained.dat$pounds_gained)))))
-100*abs(sd(gained.dat$pounds_gained)-mean(gained.dat$pounds_gained))/mean(gained.dat$pounds_gained)
-lines(0:70,dpois(0:70,mean(gained.dat$pounds_gained)),col='red')
-mean(gained.dat$pounds_gained)
-sd(gained.dat$pounds_gained)
-```
+## **(SA2)** Does *shift* have an effect on *weight gain*?
+
+We repeat the analysis of different statistical distributions from above, using *shift* as a predictor variable.
 
 ```{r}
-hist(nonzero.dat$pounds_gained, freq = FALSE,ylim=c(0,max(dpois(0:70, mean(nonzero.dat$pounds_gained)))))
-lines(0:70,dpois(0:70,mean(nonzero.dat$pounds_gained)),col='red')
-mean(nonzero.dat$pounds_gained)
-sd(nonzero.dat$pounds_gained)
-100*abs(sd(nonzero.dat$pounds_gained)-mean(nonzero.dat$pounds_gained))/mean(nonzero.dat$pounds_gained)
+SA2.model1.lm <- lm(pounds_gained ~ shift, data=nonzero.dat)
+par(mfrow=c(2,2))
+plot(SA2.model1.lm)
+SA2.model1.root <- lm(sqrt(pounds_gained) ~ shift, data=gained.dat)
+par(mfrow=c(2,2))
+plot(SA2.model1.root)
+SA2b.model1.loggauss <- glm(pounds_gained ~ shift, data=nonzero.dat,family = gaussian(link="log"))
+par(mfrow=c(2,2))
+plot(SA2b.model1.loggauss)
+SA2.model1.poisson <- glm(LBS ~ shift, data=gained.dat,family = poisson)
+par(mfrow=c(2,2))
+plot(SA2.model1.poisson)
+summary(SA2.model1.poisson)
+SA2.model1.quasi <- glm(pounds_gained ~ shift, data=gained.dat,family = quasipoisson)
+par(mfrow=c(2,2))
+plot(SA2.model1.quasi)
+summary(SA2.model1.quasi)
+SA2b.model1.Gamma <- glm(pounds_gained ~ shift, data=nonzero.dat,family = Gamma)
+par(mfrow=c(2,2))
+plot(SA2b.model1.Gamma)
+SA2.model1.zero <- zeroinfl(LBS ~ shift, data = gained.dat)
+summary(SA2.model1.zero)
 ```
 
-```{r}
-colors <- rep('red',dim(gained.dat)[1]) 
-colors[gained.dat$pounds_gained==0] <- 'blue'
-plot(pounds_gained~CalcTMM,gained.dat,col=colors)
-abline(lm(pounds_gained~CalcTMM,gained.dat))
-abline(lm(pounds_gained~CalcTMM,nonzero.dat),col='red')
-```
-```{r}
-#missing values for gender
-sum(gained.dat$gender=='')
-gained.dat <- gained.dat[!gained.dat$gender=='',]
 
-sum(is.na(gained.dat$Age))
-sum(is.na(gained.dat$height))
-sum(is.na(gained.dat$shift))
-sum(is.na(gained.dat$initial_BMI))
-```
+## Best Model (Initial Bodyweight)
+
+We now consider the different statistical families in the analysis of initial body weight and pounds gained, in the context of a zero-inflated poisson model.
 
 ```{r}
+SA12.best.poisson <- glm(LBS ~ initial_bweight, data=gained.dat,family = poisson)
+par(mfrow=c(2,2))
+plot(SA12.best.poisson)
+summary(SA12.best.poisson)
+SA12.best.quasi <- glm(pounds_gained ~ initial_bweight, data=gained.dat,family = quasipoisson)
+par(mfrow=c(2,2))
+plot(SA12.best.quasi)
+summary(SA12.best.quasi)
+SA12.best.zero <- zeroinfl(LBS ~ initial_bweight, data = gained.dat)
+summary(SA12.best.zero)
+```
+
+
+
+
+
+
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+# models developed during data exploration
 SA12.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat,family = quasipoisson)
 SA12b.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=nonzero.dat,family = quasipoisson)
 summary(SA12.model4.quasi)
@@ -303,27 +369,66 @@ par(mfrow=c(2,2))
 plot(SA12.model4.quasi)
 ```
 
-```{r}
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
 par(mfrow=c(2,2))
 plot(SA12b.model4.quasi)
 ```
 
 
-```{r}
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+# models developed during data exploration
 zero.model4 <- zeroinfl(LBS ~ gender + Age + height + shift + Vig.ex.Time + Mod.ex.time + Walk.ex.Time + initial_BMI, data = gained.dat)
 summary(zero.model4)
 ```
 
 
+# Conclusions and Recommendations
+
+- The specific aims stated for this project are partially support with these data. Specifically, we find no significant effect of calculated *Total MET-Minutes* (`CalcTMM`) or *shift* on `weightgain` as a binomial response, using logistic regression models. 
+
+- However, we do find a statistical significant effect of `shift` on *pounds gained*. This result is most strongly suggested using a zero-inflated poisson model to account for the individuals reporting 0 pounds gained, and weakly supported using a quasi-poisson model to account for the excess 0 values when no weight gain is reported.
+
+- The logistic regression model suggest that *initial body weight* or *initial BMI* are possible predictors. This was identified from a step-wise model selection algorithm implemented using the `stepAIC` function is R. We considered other combinations of variables, but the best, simplest model included only BMI or initial body weight.
+
+-When interactions among `shift`, `CalcTMM` and `initial_BMI` are included in the model, there is a slight (but not significant at p<0.05) suggestion that weight gain may differ among shifts. Thus, initial body weight or initial BMI may be a confounding factor that influences the two variables identified in the specific aims. We note, however, that there were ~100 observations that did not have initial body weight or initial BMI, so this may warrant further investigation, and greater care should be taken when collecting data.
 
 
-
-
-
-
-Bootstrap the coefficients
 
 ```{r,eval=FALSE,echo=FALSE,include=FALSE}
+colors <- rep('red',dim(gained.dat)[1]) 
+colors[gained.dat$pounds_gained==0] <- 'blue'
+plot(pounds_gained~CalcTMM,gained.dat,col=colors)
+abline(lm(pounds_gained~CalcTMM,gained.dat))
+abline(lm(pounds_gained~CalcTMM,nonzero.dat),col='red')
+```
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+#par(mfrow=c(1,1))
+hist(gained.dat$pounds_gained, freq = FALSE,ylim=c(0,max(dpois(0:70, mean(gained.dat$pounds_gained)))),breaks=10)
+100*abs(sd(gained.dat$pounds_gained)-mean(gained.dat$pounds_gained))/mean(gained.dat$pounds_gained)
+lines(0:70,dpois(0:70,mean(gained.dat$pounds_gained)),col='red')
+```
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+mean(gained.dat$pounds_gained)
+sd(gained.dat$pounds_gained)
+```
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+hist(nonzero.dat$pounds_gained, freq = FALSE,ylim=c(0,max(dpois(0:70, mean(nonzero.dat$pounds_gained)))),breaks=10)
+lines(0:70,dpois(0:70,mean(nonzero.dat$pounds_gained)),col='red')
+```
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+mean(nonzero.dat$pounds_gained)
+sd(nonzero.dat$pounds_gained)
+100*abs(sd(nonzero.dat$pounds_gained)-mean(nonzero.dat$pounds_gained))/mean(nonzero.dat$pounds_gained)
+```
+
+
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+#Bootstrap the coefficients
 set.seed(10)
 
 boots.zero.model1 <- NULL
