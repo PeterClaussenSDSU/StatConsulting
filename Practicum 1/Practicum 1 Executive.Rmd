@@ -50,9 +50,30 @@ We first observed weight gain using the binary variable `weightgain`. We created
  5b | gender + age + height + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial body weight | initial body weight was the only variable close to significance. After running the best model, given by R, we saw that initial body weight did have a significant affect on weight gain 
  6  | initial BMI * shift * total metabolic minutes |  Various combinations of the formula are suggested to have a significant affect on weight gain
 
+#### Analysis of Continous Response
+
+We consider the `pounds_gained` variable and added zeros where `pounds_gained` was missing but `weightgain` was `FALSE`. These data were highly skewed, even in the absence of the added zeros. Since these data would not likely be appropriate for linear models, we consider several families of distributions. 
+
+Linear regression, using both *total metabolic minutes*, *shift* as well as *initial_bodyweight* and *initial_BMI* (suggested by the analysis above) as predictor variables was examined on both square root and log transformed `pounds_gained`; of these two, the square root transformation most improve the normality of residuals, as determined by visual inspection of diagnostic graphs from the respective linear models. This suggested that data may be analyzed as coming from a  Poisson  distribution.
+
+We then considered generalized linear models with Poisson, QuasiPoisson and Gamma families. The QuasiPoisson GLM behaved the best, again based on inspection of the diagnostic graphs. Finally, we used a zero-inflated Poisson analysis as implemented by the R library `pscl`. A zero-inflated Poisson analysis would be preferred to specifically address the excess number of zeros added to `pounds_gained` when the case where `weightgain` = `FALSE`, while the QuasiPoisson GLM allows for additional dispersion parameter that may help account for the excess zeros.
+
+The families of distributions considered are listed below.
+
+#### Model Families for Pounds Gained
+
+Model        | Model Formula                                  | Error Distribution | Dispersion
+-------------|------------------------------------------------|--------------------|----------------
+Linear       | $E(y_i) = \mu_{i} = \mathbf{\beta} \mathbf{X}$     | $y_i \sim \mathcal{N}(\mu,\sigma^2)$ | 1
+Square Root  | $\sqrt{y_{i}} = \mathbf{\beta} \mathbf{X}$ | $e_i \sim \mathcal{N}(\sqrt{\mu},\sigma)$ | 1
+Log          | $\log{y_{i}} = \mathbf{\beta} \mathbf{X}$ | $e_i \sim \mathcal{N}(\log{\mu},\log{\sigma^2})$ | 1
+Poisson      | $E(y_i) \mu_{i} = n_i e^\mathbf{\beta} \mathbf{X}$ | $y_i \sim \frac{e^{-\lambda_i} \lambda_i ^y}{y!}$ | 1
+QuasiPoisson      | $E(y_i) = \mu_{i} = n_i e^{\mathbf{\beta} \mathbf{X}}$ | $y_i \sim \frac{e^{-\lambda_i} \lambda_i ^y}{y!}$ | $Var(y_i) = \phi E(y_i)=\phi \lambda$
+Gamma        | $E(y_i) = \mu_{i} =  e^{\mathbf{\beta} \mathbf{X}}$ | $y_i \sim \frac{\beta^{\alpha}} {\Gamma(\alpha)}y_i^{\alpha-1} e^{-y_i \beta}$ | 1
+Zero-inflated Poisson |  | $P(Y=y_i)=\begin{cases} \pi & y_i=0 \\ (1-\pi)\frac{e^{-\lambda} \lambda ^y_i}{y_i!} & y_i=1,2,... \end{cases}$ | 1
 
 ### Conclusions and Recommendations
-- The specific aims stated for this project are partially supportED with these data. Specifically, we find no significant effect of calculated *Total MET-Minutes* (`CalcTMM`) or *shift* on `weightgain` as a binomial response, using logistic regression models. 
+- The specific aims stated for this project are partially supported with these data. Specifically, we find no significant effect of calculated *Total MET-Minutes* (`CalcTMM`) or *shift* on `weightgain` as a binomial response, using logistic regression models. 
 
 - However, we do find a statistical significant effect of `shift` on *pounds gained*. This result is most strongly suggested using a zero-inflated poisson model to account for the individuals reporting 0 pounds gained, and weakly supported using a quasi-poisson model to account for the excess 0 values when no weight gain is reported.
 
