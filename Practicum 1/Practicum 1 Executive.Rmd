@@ -6,9 +6,9 @@ author:
 - Stephanie Liebl
 date: "10/5/2021"
 output:
-  pdf_document: default
-  word_document: default
   html_document: default
+  word_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -17,332 +17,38 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ### Introduction
 
-We have been given an Excel data file with data collected for a study from a call center. These data include health metrics from **employees** gathered over an eight month period. 
+We, Ben, Peter, and Stephanie, were tasked with determining what affects some measure of weight change in a specific call center. To do so, we were given an Excel data file containing data collected from a call center study. These data include health metrics from **employees** gathered over an eight month period. 
 
-Variables that are of particular interest have been highlighted in the original data. These include variables relating to weight change and demographics. 
+Variables that are of particular interest have been highlighted in the original data. These include variables relating to weight change and demographics. See below for the list of highlighted variables. For readability, we categorized these variables as Response, Primary, Anthropometric, or Physical Activity.
 
-Response Variables  | Primary Predictors | Anthropometric | Physical Activity
---------------------|--------------------|----------------|------------------
- `weightgain`       | `shift`            | `gender`       | `Vig.ex.Time`
-`lbs_gained`        | `Total_Met_Min`    | `Age`          | `Mod.ex.time`
-                    |                    | `height`       | `Walk.ex.Time`
-                    |                    | `BMI`          |
+- Response Variables: `weightgain`, `lbs_gained`
+- Primary Predictors: `shift`, `Total_Met_min`
+- Anthropometric: `gender`, `age`, `height`, `BMI`
+- Physical Activity: `Vig.ex.Time`, `Mod.ex.Time`, `Walk.ex.Time`
 
 
-We have been tasked to provide an analysis to address two specific aims:
+Specifically, we were asked to provide an analysis on two specific aims:
 
 - **(SA1)** Does *total metabolic minutes* have an effect on *weight gain*?
-- **(SA2)** Does *shift* have an effect on *weight gain*?
-
-```{r, echo=FALSE, include=FALSE}
-metrics.dat <- read.csv('Practicum 1 Data.csv',header=TRUE)
-metrics.dat <- metrics.dat[!is.na(metrics.dat$Snumber),]
-```
-
-```{r, echo=FALSE, include=FALSE}
-library(sjPlot)
-metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time)
-
-#metrics.dat$shift[metrics.dat$shift==''] <- 'missing'
-#shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other','missing')
-
-metrics.dat$shift[metrics.dat$shift==''] <- 'other'
-shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other')
-metrics.dat$shift <- factor(metrics.dat$shift,shift.levels)
-(summary(metrics.dat$shift))
-```
-
-```{r, include=FALSE, echo=FALSE}
-metrics.dat$MissingLbs <- is.na(metrics.dat$pounds_gained)
-table(metrics.dat$MissingLbs,metrics.dat$weightgain)
-```
-
-
-
-```{r, echo=FALSE, include=FALSE}
-gained.dat <- metrics.dat[metrics.dat$weightgain %in% c('Yes','No'),]
-gained.dat$WG <- FALSE
-gained.dat$WG[gained.dat$weightgain=='Yes'] <- TRUE
-gained.dat$pounds_gained[!gained.dat$WG] <- 0
-dim(gained.dat)
-```
-
-```{r, include=FALSE, echo=FALSE}
-gained.dat$MissingLbs <- is.na(gained.dat$pounds_gained)
-table(gained.dat$MissingLbs,gained.dat$weightgain)
-```
-
-```{r, echo=FALSE, include=FALSE}
-gained.dat <- gained.dat[!is.na(gained.dat$CalcTMM),]
-dim(gained.dat)
-
-#gained.dat <- gained.dat[!gained.dat$MissingLbs,]
-dim(gained.dat)
-```
-
-```{r, echo=FALSE, include=FALSE}
-par(mfrow=c(1,2))
-boxplot(pounds_gained ~ WG,data=gained.dat,horizontal = TRUE, height=2.5)
-plot(WG~CalcTMM,data=gained.dat)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA1.model1 <- glm(WG ~ CalcTMM, data=gained.dat,family = binomial)
-tab_model(SA1.model1)
-```
-
-```{r, echo=FALSE, include=FALSE}
-par(mfrow=c(2,2))
-plot(SA1.model1)
-```
-
-```{r, warning=FALSE, echo=FALSE, include=FALSE}
-SA2.model1 <- glm(WG ~ shift, data=gained.dat,family = binomial)
-tab_model(SA2.model1)
-```
-
-```{r, echo=FALSE, include=FALSE}
-par(mfrow=c(2,2))
-plot(SA2.model1)
-```
-
-
-```{r, echo=FALSE, include=FALSE, warning=FALSE}
-SA12.model2 <- glm(WG ~ shift*CalcTMM, data=gained.dat,family = binomial)
-tab_model(SA12.model2)
-```
-
-```{r, echo=FALSE, include=FALSE}
-plot(metrics.dat$shift,metrics.dat$CalcTMM, xlab='shift', ylab='CalcTMM', height=2.5)
-```
-
-
-```{r, echo=FALSE, include=FALSE}
-subset3a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "CalcTMM")])),]
-subset3b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height","shift", "CalcTMM")])),]
-
-SA12.model3a <- glm(WG ~ gender + Age + shift + CalcTMM, data=subset3a.dat,family = binomial)
-SA12.model3b <- glm(WG ~ gender + Age + height +shift + CalcTMM, data=subset3b.dat,family = binomial)
-
-tab_model(SA12.model3a, SA12.model3b)
-```
-
-
-```{r, echo=FALSE, include=FALSE}
-subset4a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time")])),]
-subset4b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time")])),]
-
-SA12.model4a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=subset4a.dat, family = binomial)
-SA12.model4b <- glm(WG ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=subset4b.dat, family = binomial)
-
-tab_model(SA12.model4a, SA12.model4b)
-```
-
-```{r, echo=FALSE, include=FALSE}
-gained.dat['initial_bweight'] <- gained.dat$bweight - gained.dat$pounds_gained
-gained.dat['initial_BMI'] <- (gained.dat$initial_bweight / (gained.dat$height)^2)*703
-```
-
-```{r, warning=FALSE, echo=FALSE, include=FALSE}
-subset5a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time", "initial_BMI")])),]
-subset5b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time", "initial_bweight")])),]
-
-SA12.model5a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time + initial_BMI, data=subset5a.dat, family = binomial)
-SA12.model5b <- glm(WG ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time +initial_bweight, data=subset5b.dat, family = binomial)
-
-tab_model(SA12.model5a, SA12.model5b)
-```
-
-
-```{r, include=FALSE,echo=FALSE}
-library(MASS)
-```
-
-```{r,echo=TRUE,include=FALSE,warning=FALSE}
-best.modela <- stepAIC(SA12.model5a, direction = "both")
-best.modelb <- stepAIC(SA12.model5b, direction = "both")
-```
-
-```{r, warning=FALSE, include=FALSE}
-tab_model(best.modela, best.modelb)
-AIC(best.modela,best.modelb)
-```
-
-
-```{r, echo=FALSE, warning=FALSE, include=FALSE}
-subset6a.dat <- gained.dat[which(complete.cases(gained.dat[, c("initial_BMI", "shift", "CalcTMM")])),]
-subset6b.dat <- gained.dat[which(complete.cases(gained.dat[,c("initial_bweight", "shift", "CalcTMM")])),]
-
-subset6a.model <- glm(WG~ initial_BMI*shift*CalcTMM, data=subset6a.dat, family =binomial)
-subset6b.model <- glm(WG~ initial_bweight*shift*CalcTMM, data=subset6b.dat, family=binomial)
-
-stepAIC(subset6a.model, subset6b.model, direction="both")
-```
-
-
-```{r,echo=FALSE, include=FALSE}
-sum(is.na(gained.dat$pounds_gained))
-gained.dat <- gained.dat[!is.na(gained.dat$pounds_gained),]
-```
-
-```{r,echo=FALSE, include=FALSE}
-par(mfrow=c(1,2))
-
-hist(gained.dat$pounds_gained, freq = FALSE,breaks=10, main='Distribution of Pounds Gained')
-nonzero.dat <- gained.dat[gained.dat$pounds_gained>0,]
-hist(nonzero.dat$pounds_gained, freq = FALSE,breaks=10, main='Distribution of Positive Pounds Gained')
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA1.model1.lm <- lm(pounds_gained ~ CalcTMM, data=nonzero.dat)
-par(mfrow=c(2,2))
-plot(SA1.model1.lm)
-```
-
-```{r,eval=FALSE,echo=FALSE, include=FALSE}
-#equivalent model, just using glm instead of lm
-SA1.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = gaussian)
-SA1b.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian)
-#summary(SA1.model1.gauss)
-par(mfrow=c(2,2))
-plot(SA1.model1.gauss)
-```
-
-```{r, echo=FALSE, include=FALSE}
-par(mfrow=c(2,2))
-SA1.model1.root <- lm(sqrt(pounds_gained) ~ CalcTMM, data=gained.dat)
-plot(SA1.model1.root)
-```
-
-
-```{r, include=FALSE, echo=FALSE}
-SA1b.model1.loggauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian(link="log"))
-par(mfrow=c(2,2))
-plot(SA1b.model1.loggauss)
-```
-
-```{r, include=FALSE, echo=FALSE}
-gained.dat$LBS <- round(gained.dat$pounds_gained)
-nonzero.dat$LBS <- round(nonzero.dat$pounds_gained)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA1.model1.poisson <- glm(LBS ~ CalcTMM, data=gained.dat,family = poisson)
-par(mfrow=c(2,2))
-plot(SA1.model1.poisson)
-```
-
-
-```{r, echo=FALSE, include=FALSE}
-SA1.model1.quasi <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = quasipoisson)
-par(mfrow=c(2,2))
-plot(SA1.model1.quasi)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA1b.model1.Gamma <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = Gamma)
-par(mfrow=c(2,2))
-plot(SA1b.model1.Gamma)
-```
-
-```{r, include=FALSE, echo=FALSE}
-library(pscl)
-```
-
-```{r, warning=FALSE, echo=FALSE, include=FALSE}
-SA1.model1.zero <- zeroinfl(LBS ~ CalcTMM, data = gained.dat)
-tab_model(SA1.model1.zero)
-```
-
-
-```{r, echo=FALSE, include=FALSE}
-SA2.model1.lm <- lm(pounds_gained ~ shift, data=nonzero.dat)
-par(mfrow=c(2,2))
-plot(SA2.model1.lm)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA2.model1.root <- lm(sqrt(pounds_gained) ~ shift, data=gained.dat)
-par(mfrow=c(2,2))
-plot(SA2.model1.root)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA2b.model1.loggauss <- glm(pounds_gained ~ shift, data=nonzero.dat,family = gaussian(link="log"))
-par(mfrow=c(2,2))
-plot(SA2b.model1.loggauss)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA2.model1.poisson <- glm(LBS ~ shift, data=gained.dat,family = poisson)
-par(mfrow=c(2,2))
-plot(SA2.model1.poisson)
-#tab_model(SA2.model1.poisson)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA2.model1.quasi <- glm(pounds_gained ~ shift, data=gained.dat,family = quasipoisson)
-par(mfrow=c(2,2))
-plot(SA2.model1.quasi)
-#tab_model(SA2.model1.quasi)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA2b.model1.Gamma <- glm(pounds_gained ~ shift, data=nonzero.dat,family = Gamma)
-par(mfrow=c(2,2))
-plot(SA2b.model1.Gamma)
-```
-
-```{r, echo=FALSE, include=FALSE}
-SA2.model1.zero <- zeroinfl(LBS ~ shift, data = gained.dat)
-tab_model(SA2.model1.zero)
-```
-
-
-```{r, include=FALSE}
-SA12.best.poisson <- glm(LBS ~ initial_bweight, data=gained.dat,family = poisson)
-par(mfrow=c(2,2))
-plot(SA12.best.poisson)
-
-SA12.best.quasi <- glm(pounds_gained ~ initial_bweight, data=gained.dat,family = quasipoisson)
-par(mfrow=c(2,2))
-plot(SA12.best.quasi)
-```
-
-```{r, include=FALSE}
-SA12.best.zero <- zeroinfl(LBS ~ initial_bweight, data = gained.dat)
-tab_model(SA12.best.poisson, SA12.best.quasi, SA12.best.zero)
-```
-
-
-
-
-
-
-
-```{r,eval=FALSE,echo=FALSE,include=FALSE}
-# models developed during data exploration
-SA12.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat,family = quasipoisson)
-SA12b.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=nonzero.dat,family = quasipoisson)
-#summary(SA12.model4.quasi)
-#summary(SA12b.model4.quasi)
-tab_model(SA12.model4.quasi, SA12b.model4.quasi)
-par(mfrow=c(2,2))
-plot(SA12.model4.quasi)
-```
-
-```{r,eval=FALSE,echo=FALSE,include=FALSE}
-par(mfrow=c(2,2))
-plot(SA12b.model4.quasi)
-```
-
-
-```{r,eval=FALSE,echo=FALSE,include=FALSE}
-# models developed during data exploration
-zero.model4 <- zeroinfl(LBS ~ gender + Age + height + shift + Vig.ex.Time + Mod.ex.time + Walk.ex.Time + initial_BMI, data = gained.dat)
-#summary(zero.model4)
-tab_model(zero.model4)
-```
+- **(SA2)** Does *shift* have an effect on *weight gain*? 
+
+Our technical report goes in depth answering these specific aims. We will proceed by summarizing our findings from the technical report.
+
+#### Analysis of Binary Response
+We first observed weight gain using the binary variable `weightgain`. We created roughly six models exploring what, if any, variables affect the binary variable `weightgain`. 
+- **Model 1** We consider Model 1 to describe the generalized linear models of weight gain versus solely total metabolic minutes and shift, respectively. Thus, we created a Model 1 for (SA1) and a Model 1 for (SA2). In Model 1 (SA1), a generalized linear model of the binomial family was used to observe weight gain versus total metabolic minutes. The results of this generalized linear model suggested that total metabolic minutes do not have a significant affect on weight gain. Similarly, our Model 1 (SA2) results suggested no shift had an affect on weight gain.
+
+
+ Model| Formula            | Results
+------|--------------------|----------------
+ 2  | shift * total metabolic minutes| No combination of shift*total metabolic minutes had a significant affect on weight gain       
+ 3a | gender + age + shift + total metabolic minutes | No variables within gender, age, shift, total metabolic minutes had a significant affect on weight gain          
+ 3b | gender + age + height + shift + total metabolic minutes | No variables within gender, age, height, shift, total metabolic minutes had a significant affect on weight gain        
+ 4a | gender + age + shift + vig.ex.time + mod.ex.time + walk.ex.time  |  No variables within gender, age, shift, vig.ex.time, mod.ex.time, walk.ex.time had a significant affect on weight gain     
+ 4b | gender + age + height + shift + vig.ex.time + mod.ex.time + walk.ex.time |  No variables within gender, age, height, shift, vig.ex.time, mod.ex.time, walk.ex.time had a significant affect on weight gain
+ 5a | gender + age + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial BMI | initial BMI was the only variable close to significance 
+ 5b | gender + age + height + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial body weight | initial body weight was the only variable close to significance. After running the best model, given by R, we saw that initial body weight did have a significant affect on weight gain 
+ 6  | initial BMI * shift * total metabolic minutes |  Various combinations of the formula are suggested to have a significant affect on weight gain
 
 
 ### Conclusions and Recommendations
@@ -353,4 +59,324 @@ tab_model(zero.model4)
 - The logistic regression model suggest that *initial body weight* or *initial BMI* are possible predictors. This was identified from a step-wise model selection algorithm implemented using the `stepAIC` function is R. We considered other combinations of variables, but the best, simplest model included only BMI or initial body weight.
 
 - When interactions among `shift`, `CalcTMM` and `initial_BMI` are included in the model, there is a slight (but not significant at p<0.05) suggestion that weight gain may differ among shifts. Thus, initial body weight or initial BMI may be a confounding factor that influences the two variables identified in the specific aims. We note, however, that there were ~100 observations that did not have initial body weight or initial BMI, so this may warrant further investigation, and greater care should be taken when collecting data.
+
+
+
+
+
+
+
+
+
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- metrics.dat <- read.csv('Practicum 1 Data.csv',header=TRUE) -->
+<!-- metrics.dat <- metrics.dat[!is.na(metrics.dat$Snumber),] -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- library(sjPlot) -->
+<!-- metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time) -->
+
+<!-- #metrics.dat$shift[metrics.dat$shift==''] <- 'missing' -->
+<!-- #shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other','missing') -->
+
+<!-- metrics.dat$shift[metrics.dat$shift==''] <- 'other' -->
+<!-- shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other') -->
+<!-- metrics.dat$shift <- factor(metrics.dat$shift,shift.levels) -->
+<!-- (summary(metrics.dat$shift)) -->
+<!-- ``` -->
+
+<!-- ```{r, include=FALSE, echo=FALSE} -->
+<!-- metrics.dat$MissingLbs <- is.na(metrics.dat$pounds_gained) -->
+<!-- table(metrics.dat$MissingLbs,metrics.dat$weightgain) -->
+<!-- ``` -->
+
+
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- gained.dat <- metrics.dat[metrics.dat$weightgain %in% c('Yes','No'),] -->
+<!-- gained.dat$WG <- FALSE -->
+<!-- gained.dat$WG[gained.dat$weightgain=='Yes'] <- TRUE -->
+<!-- gained.dat$pounds_gained[!gained.dat$WG] <- 0 -->
+<!-- dim(gained.dat) -->
+<!-- ``` -->
+
+<!-- ```{r, include=FALSE, echo=FALSE} -->
+<!-- gained.dat$MissingLbs <- is.na(gained.dat$pounds_gained) -->
+<!-- table(gained.dat$MissingLbs,gained.dat$weightgain) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- gained.dat <- gained.dat[!is.na(gained.dat$CalcTMM),] -->
+<!-- dim(gained.dat) -->
+
+<!-- #gained.dat <- gained.dat[!gained.dat$MissingLbs,] -->
+<!-- dim(gained.dat) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- par(mfrow=c(1,2)) -->
+<!-- boxplot(pounds_gained ~ WG,data=gained.dat,horizontal = TRUE, height=2.5) -->
+<!-- plot(WG~CalcTMM,data=gained.dat) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA1.model1 <- glm(WG ~ CalcTMM, data=gained.dat,family = binomial) -->
+<!-- tab_model(SA1.model1) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA1.model1) -->
+<!-- ``` -->
+
+<!-- ```{r, warning=FALSE, echo=FALSE, include=FALSE} -->
+<!-- SA2.model1 <- glm(WG ~ shift, data=gained.dat,family = binomial) -->
+<!-- tab_model(SA2.model1) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA2.model1) -->
+<!-- ``` -->
+
+
+<!-- ```{r, echo=FALSE, include=FALSE, warning=FALSE} -->
+<!-- SA12.model2 <- glm(WG ~ shift*CalcTMM, data=gained.dat,family = binomial) -->
+<!-- tab_model(SA12.model2) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- plot(metrics.dat$shift,metrics.dat$CalcTMM, xlab='shift', ylab='CalcTMM', height=2.5) -->
+<!-- ``` -->
+
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- subset3a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "CalcTMM")])),] -->
+<!-- subset3b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height","shift", "CalcTMM")])),] -->
+
+<!-- SA12.model3a <- glm(WG ~ gender + Age + shift + CalcTMM, data=subset3a.dat,family = binomial) -->
+<!-- SA12.model3b <- glm(WG ~ gender + Age + height +shift + CalcTMM, data=subset3b.dat,family = binomial) -->
+
+<!-- tab_model(SA12.model3a, SA12.model3b) -->
+<!-- ``` -->
+
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- subset4a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time")])),] -->
+<!-- subset4b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time")])),] -->
+
+<!-- SA12.model4a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=subset4a.dat, family = binomial) -->
+<!-- SA12.model4b <- glm(WG ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=subset4b.dat, family = binomial) -->
+
+<!-- tab_model(SA12.model4a, SA12.model4b) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- gained.dat['initial_bweight'] <- gained.dat$bweight - gained.dat$pounds_gained -->
+<!-- gained.dat['initial_BMI'] <- (gained.dat$initial_bweight / (gained.dat$height)^2)*703 -->
+<!-- ``` -->
+
+<!-- ```{r, warning=FALSE, echo=FALSE, include=FALSE} -->
+<!-- subset5a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time", "initial_BMI")])),] -->
+<!-- subset5b.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "height", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time", "initial_bweight")])),] -->
+
+<!-- SA12.model5a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time + initial_BMI, data=subset5a.dat, family = binomial) -->
+<!-- SA12.model5b <- glm(WG ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time +initial_bweight, data=subset5b.dat, family = binomial) -->
+
+<!-- tab_model(SA12.model5a, SA12.model5b) -->
+<!-- ``` -->
+
+
+<!-- ```{r, include=FALSE,echo=FALSE} -->
+<!-- library(MASS) -->
+<!-- ``` -->
+
+<!-- ```{r,echo=TRUE,include=FALSE,warning=FALSE} -->
+<!-- best.modela <- stepAIC(SA12.model5a, direction = "both") -->
+<!-- best.modelb <- stepAIC(SA12.model5b, direction = "both") -->
+<!-- ``` -->
+
+<!-- ```{r, warning=FALSE, include=FALSE} -->
+<!-- tab_model(best.modela, best.modelb) -->
+<!-- AIC(best.modela,best.modelb) -->
+<!-- ``` -->
+
+
+<!-- ```{r, echo=FALSE, warning=FALSE, include=FALSE} -->
+<!-- subset6a.dat <- gained.dat[which(complete.cases(gained.dat[, c("initial_BMI", "shift", "CalcTMM")])),] -->
+<!-- subset6b.dat <- gained.dat[which(complete.cases(gained.dat[,c("initial_bweight", "shift", "CalcTMM")])),] -->
+
+<!-- subset6a.model <- glm(WG~ initial_BMI*shift*CalcTMM, data=subset6a.dat, family =binomial) -->
+<!-- subset6b.model <- glm(WG~ initial_bweight*shift*CalcTMM, data=subset6b.dat, family=binomial) -->
+
+<!-- stepAIC(subset6a.model, subset6b.model, direction="both") -->
+<!-- ``` -->
+
+
+<!-- ```{r,echo=FALSE, include=FALSE} -->
+<!-- sum(is.na(gained.dat$pounds_gained)) -->
+<!-- gained.dat <- gained.dat[!is.na(gained.dat$pounds_gained),] -->
+<!-- ``` -->
+
+<!-- ```{r,echo=FALSE, include=FALSE} -->
+<!-- par(mfrow=c(1,2)) -->
+
+<!-- hist(gained.dat$pounds_gained, freq = FALSE,breaks=10, main='Distribution of Pounds Gained') -->
+<!-- nonzero.dat <- gained.dat[gained.dat$pounds_gained>0,] -->
+<!-- hist(nonzero.dat$pounds_gained, freq = FALSE,breaks=10, main='Distribution of Positive Pounds Gained') -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA1.model1.lm <- lm(pounds_gained ~ CalcTMM, data=nonzero.dat) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA1.model1.lm) -->
+<!-- ``` -->
+
+<!-- ```{r,eval=FALSE,echo=FALSE, include=FALSE} -->
+<!-- #equivalent model, just using glm instead of lm -->
+<!-- SA1.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = gaussian) -->
+<!-- SA1b.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian) -->
+<!-- #summary(SA1.model1.gauss) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA1.model1.gauss) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- SA1.model1.root <- lm(sqrt(pounds_gained) ~ CalcTMM, data=gained.dat) -->
+<!-- plot(SA1.model1.root) -->
+<!-- ``` -->
+
+
+<!-- ```{r, include=FALSE, echo=FALSE} -->
+<!-- SA1b.model1.loggauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian(link="log")) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA1b.model1.loggauss) -->
+<!-- ``` -->
+
+<!-- ```{r, include=FALSE, echo=FALSE} -->
+<!-- gained.dat$LBS <- round(gained.dat$pounds_gained) -->
+<!-- nonzero.dat$LBS <- round(nonzero.dat$pounds_gained) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA1.model1.poisson <- glm(LBS ~ CalcTMM, data=gained.dat,family = poisson) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA1.model1.poisson) -->
+<!-- ``` -->
+
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA1.model1.quasi <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = quasipoisson) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA1.model1.quasi) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA1b.model1.Gamma <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = Gamma) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA1b.model1.Gamma) -->
+<!-- ``` -->
+
+<!-- ```{r, include=FALSE, echo=FALSE} -->
+<!-- library(pscl) -->
+<!-- ``` -->
+
+<!-- ```{r, warning=FALSE, echo=FALSE, include=FALSE} -->
+<!-- SA1.model1.zero <- zeroinfl(LBS ~ CalcTMM, data = gained.dat) -->
+<!-- tab_model(SA1.model1.zero) -->
+<!-- ``` -->
+
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA2.model1.lm <- lm(pounds_gained ~ shift, data=nonzero.dat) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA2.model1.lm) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA2.model1.root <- lm(sqrt(pounds_gained) ~ shift, data=gained.dat) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA2.model1.root) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA2b.model1.loggauss <- glm(pounds_gained ~ shift, data=nonzero.dat,family = gaussian(link="log")) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA2b.model1.loggauss) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA2.model1.poisson <- glm(LBS ~ shift, data=gained.dat,family = poisson) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA2.model1.poisson) -->
+<!-- #tab_model(SA2.model1.poisson) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA2.model1.quasi <- glm(pounds_gained ~ shift, data=gained.dat,family = quasipoisson) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA2.model1.quasi) -->
+<!-- #tab_model(SA2.model1.quasi) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA2b.model1.Gamma <- glm(pounds_gained ~ shift, data=nonzero.dat,family = Gamma) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA2b.model1.Gamma) -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE, include=FALSE} -->
+<!-- SA2.model1.zero <- zeroinfl(LBS ~ shift, data = gained.dat) -->
+<!-- tab_model(SA2.model1.zero) -->
+<!-- ``` -->
+
+
+<!-- ```{r, include=FALSE} -->
+<!-- SA12.best.poisson <- glm(LBS ~ initial_bweight, data=gained.dat,family = poisson) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA12.best.poisson) -->
+
+<!-- SA12.best.quasi <- glm(pounds_gained ~ initial_bweight, data=gained.dat,family = quasipoisson) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA12.best.quasi) -->
+<!-- ``` -->
+
+<!-- ```{r, include=FALSE} -->
+<!-- SA12.best.zero <- zeroinfl(LBS ~ initial_bweight, data = gained.dat) -->
+<!-- tab_model(SA12.best.poisson, SA12.best.quasi, SA12.best.zero) -->
+<!-- ``` -->
+
+
+
+
+
+
+
+<!-- ```{r,eval=FALSE,echo=FALSE,include=FALSE} -->
+<!-- # models developed during data exploration -->
+<!-- SA12.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat,family = quasipoisson) -->
+<!-- SA12b.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=nonzero.dat,family = quasipoisson) -->
+<!-- #summary(SA12.model4.quasi) -->
+<!-- #summary(SA12b.model4.quasi) -->
+<!-- tab_model(SA12.model4.quasi, SA12b.model4.quasi) -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA12.model4.quasi) -->
+<!-- ``` -->
+
+<!-- ```{r,eval=FALSE,echo=FALSE,include=FALSE} -->
+<!-- par(mfrow=c(2,2)) -->
+<!-- plot(SA12b.model4.quasi) -->
+<!-- ``` -->
+
+
+<!-- ```{r,eval=FALSE,echo=FALSE,include=FALSE} -->
+<!-- # models developed during data exploration -->
+<!-- zero.model4 <- zeroinfl(LBS ~ gender + Age + height + shift + Vig.ex.Time + Mod.ex.time + Walk.ex.Time + initial_BMI, data = gained.dat) -->
+<!-- #summary(zero.model4) -->
+<!-- tab_model(zero.model4) -->
+<!-- ``` -->
+
 
