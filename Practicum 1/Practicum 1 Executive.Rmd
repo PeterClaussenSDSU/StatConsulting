@@ -1,9 +1,7 @@
 ---
 title: "Practicum 1 Analysis"
 author:
-- Peter Claussen
-- Ben Derenge
-- Stephanie Liebl
+- Peter Claussen, Ben Derenge, Stephanie Liebl
 date: "10/5/2021"
 output:
   html_document: default
@@ -15,11 +13,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-### Introduction
-
-We, Ben, Peter, and Stephanie, were tasked with determining what affects some measure of weight change in a specific call center. To do so, we were given an Excel data file containing data collected from a call center study. These data include health metrics from **employees** gathered over an eight month period. 
-
-Variables that are of particular interest have been highlighted in the original data. These include variables relating to weight change and demographics. See below for the list of highlighted variables. For readability, we categorized these variables as Response, Primary, Anthropometric, or Physical Activity.
+We were tasked with determining what affects weight change in a specific call center. To do so, we were given an Excel data file containing data collected from a call center study. These data include health metrics from **employees** gathered over an eight month period. Variables that are of particular interest have been highlighted in the original data. These include variables relating to weight change and demographics. See below for the list of highlighted variables. For readability, we categorized these variables as Response, Primary, Anthropometric, or Physical Activity.
 
 - Response Variables: `weightgain`, `lbs_gained`
 - Primary Predictors: `shift`, `Total_Met_min`
@@ -34,22 +28,23 @@ Specifically, we were asked to provide an analysis on two specific aims:
 
 Our technical report goes in depth answering these specific aims. We will proceed by summarizing our findings from the technical report.
 
-#### Analysis of Binary Response
-We first observed weight gain using the binary variable `weightgain`. We created roughly six models exploring what, if any, variables affect the binary variable `weightgain`. We consider Model 1 to describe the generalized linear models of weight gain versus solely total metabolic minutes and shift, respectively. Thus, we created a Model 1 for (SA1) and a Model 1 for (SA2). In Model 1 (SA1), a generalized linear model of the binomial family was used to observe weight gain versus total metabolic minutes. The results of this generalized linear model suggested that total metabolic minutes do not have a significant affect on weight gain. Similarly, our Model 1 (SA2) results suggested no shift had an affect on weight gain. In the table below, we briefly show the other models we included in our technical report. These models were run to determine what variables affect weight gain. The two variables we found most significant were initial body weight and initial BMI, which we then used in our analysis of weight change as a continuous variable.
+We first observed weight gain using the binary variable `weightgain`. We created roughly six models exploring what, if any, variables affect the binary variable `weightgain`.In the table below, we briefly show the other models we included in our technical report. These models were run to determine what variables affect weight gain. The two variables we found most significant were initial body weight and initial BMI, which we then used in our analysis of weight change as a continuous variable.
 
 
  Model| Formula            | Results
 ------|--------------------|----------------
- 2  | shift * total metabolic minutes| No combination of shift*total metabolic minutes had a significant affect on weight gain       
- 3a | gender + age + shift + total metabolic minutes | No variables within gender, age, shift, total metabolic minutes had a significant affect on weight gain          
- 3b | gender + age + height + shift + total metabolic minutes | No variables within gender, age, height, shift, total metabolic minutes had a significant affect on weight gain        
- 4a | gender + age + shift + vig.ex.time + mod.ex.time + walk.ex.time  |  No variables within gender, age, shift, vig.ex.time, mod.ex.time, walk.ex.time had a significant affect on weight gain     
- 4b | gender + age + height + shift + vig.ex.time + mod.ex.time + walk.ex.time |  No variables within gender, age, height, shift, vig.ex.time, mod.ex.time, walk.ex.time had a significant affect on weight gain
- 5a | gender + age + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial BMI | Initial BMI is close to having a significant affect on weight gain with a p-value of just over 0.5
- 5b | gender + age + height + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial body weight | Initial body weight is close to having a significant affect on weight gain with a p-value of just over 0.5 in the original generalized linear model 
- 6  | Initial BMI * shift * total metabolic minutes |  Various combinations of the formula are suggested to have a significant affect on weight gain
+ 1a | total met minutes | No affect on weight gain
+ 1b | shift | No affect on weight gain
+ 2  | shift * total met minutes| No combination of variables had a significant affect on weight gain       
+ 3a | gender + age + shift + total met minutes | No variables had a significant affect on weight gain          
+ 3b | gender + age + height + shift + total met minutes | No variables had a significant affect on weight gain        
+ 4a | gender + age + shift + vig.ex.time + mod.ex.time + walk.ex.time  |  No variables had a significant affect on weight gain     
+ 4b | Model 4a + height |  No variables had a significant affect on weight gain
+ 5a | Model 4a + initial_BMI | Initial BMI is close to having a significant affect on weight gain with a p-value of just over 0.5
+ 5b | Model 4b + initial body weight | Initial body weight is close to having a significant affect on weight gain with a p-value of just over 0.5
+ 6  | initial BMI * shift * total met minutes |  Various combinations of the formula are suggested to have a significant affect on weight gain
 
-#### Analysis of Continous Response
+
 
 We consider the `pounds_gained` variable and added zeros where `pounds_gained` was missing but `weightgain` was `FALSE`. These data were highly skewed, even in the absence of the added zeros. Since these data would not likely be appropriate for linear models, we consider several families of distributions. 
 
@@ -59,7 +54,6 @@ We then considered generalized linear models with Poisson, QuasiPoisson and Gamm
 
 The families of distributions considered are listed below.
 
-#### Model Families for Pounds Gained
 
 Model        | Model Formula                                  | Error Distribution | Dispersion
 -------------|------------------------------------------------|--------------------|----------------
@@ -71,14 +65,14 @@ QuasiPoisson      | $E(y_i) = \mu_{i} = n_i e^{\mathbf{\beta} \mathbf{X}}$ | $y_
 Gamma        | $E(y_i) = \mu_{i} =  e^{\mathbf{\beta} \mathbf{X}}$ | $y_i \sim \frac{\beta^{\alpha}} {\Gamma(\alpha)}y_i^{\alpha-1} e^{-y_i \beta}$ | 1
 Zero-inflated Poisson |  | $P(Y=y_i)=\begin{cases} \pi & y_i=0 \\ (1-\pi)\frac{e^{-\lambda} \lambda ^y_i}{y_i!} & y_i=1,2,... \end{cases}$ | 1
 
-### Conclusions and Recommendations
-- The specific aims stated for this project are partially supported with these data. Specifically, we find no significant effect of calculated *Total MET-Minutes* (`CalcTMM`) or *shift* on `weightgain` as a binomial response, using logistic regression models. 
 
-- However, we do find a statistical significant effect of `shift` on *pounds gained*. This result is most strongly suggested using a zero-inflated poisson model to account for the individuals reporting 0 pounds gained, and weakly supported using a quasi-poisson model to account for the excess 0 values when no weight gain is reported.
+The specific aims stated for this project are partially supported with these data. Specifically, we find no significant effect of calculated *Total MET-Minutes* (`CalcTMM`) or *shift* on `weightgain` as a binomial response, using logistic regression models. 
 
-- The logistic regression model suggest that *initial body weight* or *initial BMI* are possible predictors. This was identified from a step-wise model selection algorithm implemented using the `stepAIC` function is R. We considered other combinations of variables, but the best, simplest model included only BMI or initial body weight.
+However, we do find a statistical significant effect of `shift` on *pounds gained*. This result is most strongly suggested using a zero-inflated poisson model to account for the individuals reporting 0 pounds gained, and weakly supported using a quasi-poisson model to account for the excess 0 values when no weight gain is reported.
 
-- When interactions among `shift`, `CalcTMM` and `initial_BMI` are included in the model, there is a slight (but not significant at p<0.05) suggestion that weight gain may differ among shifts. Thus, initial body weight or initial BMI may be a confounding factor that influences the two variables identified in the specific aims. We note, however, that there were ~100 observations that did not have initial body weight or initial BMI, so this may warrant further investigation, and greater care should be taken when collecting data.
+The logistic regression model suggest that *initial body weight* or *initial BMI* are possible predictors. This was identified from a step-wise model selection algorithm implemented using the `stepAIC` function is R. We considered other combinations of variables, but the best, simplest model included only BMI or initial body weight.
+
+When interactions among `shift`, `CalcTMM` and `initial_BMI` are included in the model, there is a slight (but not significant at p<0.05) suggestion that weight gain may differ among shifts. Thus, initial body weight or initial BMI may be a confounding factor that influences the two variables identified in the specific aims. We note, however, that there were ~100 observations that did not have initial body weight or initial BMI, so this may warrant further investigation, and greater care should be taken when collecting data.
 
 
 
@@ -398,4 +392,3 @@ Zero-inflated Poisson |  | $P(Y=y_i)=\begin{cases} \pi & y_i=0 \\ (1-\pi)\frac{e
 <!-- #summary(zero.model4) -->
 <!-- tab_model(zero.model4) -->
 <!-- ``` -->
-
