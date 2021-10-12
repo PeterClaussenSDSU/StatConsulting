@@ -1,0 +1,119 @@
+Practicum 1 
+========================================================
+author: Peter Claussen, Ben Derenge, Stephanie Liebl
+date: 10/12/2021
+autosize: true
+
+Task
+========================================================
+**Determine what variables affect change in weight**.
+
+Specifically, we were asked to look at the following specific aims:
+- (SA.1) Does **total metabolic minutes have an effect on weight gain**?
+- (SA.2) Does **shift have an affect on weight gain**?
+
+Materials given:
+- Practicum 1 Data
+- Redacted article regarding the call center study 
+
+
+Variables of Interest
+========================================================
+
+Response Variables  | Primary Predictors | Anthropometric | Physical Activity
+--------------------|--------------------|----------------|------------------
+ `weightgain`       | `shift`            | `gender`       | `Vig.ex.Time`
+`lbs_gained`        | `Total_Met_Min`    | `Age`          | `Mod.ex.time`
+                    |                    | `height`       | `Walk.ex.Time`
+                    |                    | `BMI`          |
+                    
+First Steps                    
+========================================================
+- Initial data set had 392 rows
+- We determined `Snumber` was a unique identifier
+
+```{r, echo=FALSE, include=FALSE}
+metrics.dat <- read.csv('Practicum 1 Data.csv',header=TRUE)
+```
+
+```{r}
+nrow(metrics.dat)
+```
+- Thus, we removed rows where `Snumber` was missing
+```{r}
+metrics.dat <- metrics.dat[!is.na(metrics.dat$Snumber),]
+nrow(metrics.dat)
+```
+
+Total Met Min Variable
+========================================================
+```{r, include=FALSE}
+library(ggplot2)
+```
+- We found 98 missing values for `Total_Met_Min`
+- So we used the Total_Met_Min formula given to us to try and impute more values
+```{r}
+metrics.dat$CalcTMM <- with(metrics.dat, 8*Vig.ex.Time + 4*Mod.ex.time + 3.3*Walk.ex.Time)
+```
+
+```{r, eval=FALSE,echo=FALSE, fig.align='center', fig.height=4}
+ggplot(metrics.dat, aes(metrics.dat$Total_Met_Min, metrics.dat$CalcTMM)) + geom_point(col='red') + ylim(0,7000) + xlim(0, 7000) + geom_abline(intercept=0, slope=1)
+```
+ 
+- CalcTMM now only has 1 missing value 
+```{r, eval=FALSE}
+nrow(metrics.dat[which(is.na(metrics.dat$Total_Met_Min)),])#98
+nrow(metrics.dat[which(is.na(metrics.dat$CalcTMM)),])      #1
+```
+
+Shift Variable
+========================================================
+<small> We found that `shift` was a categorical variable with missing values and an 'other' column </small>
+```{r}
+unique(metrics.dat$shift)
+```
+
+<small> We decided to combine the missing and 'other' values into one column </small>
+```{r, echo=FALSE}
+metrics.dat$shift[metrics.dat$shift==''] <- 'other'
+shift.levels <- c(paste(c(7:11),'am',sep=''),paste(c(12,1:2),'pm',sep=''),'other')
+metrics.dat$shift <- factor(metrics.dat$shift,shift.levels)
+(summary(metrics.dat$shift))
+```
+
+
+Choosing a Response Variable
+========================================================
+We had two options for a response variable
+- <small>`weightgain` -- a binary yes/no variable denoting if weight was gained</small>
+- <small>`pounds_gained` -- a continuous variable that has only nonnegative values</small>
+- <small> We cannot infer anything for values of `weightgain` that are NA, so we removed those rows </small>
+```{r}
+gained.dat <- metrics.dat[metrics.dat$weightgain %in% c('Yes','No'),]
+dim(gained.dat)   
+```
+- <small> We added a column `WG` where: 'TRUE' if `weightgain` if  'Yes',  'FALSE' if 'No'</small>
+
+Choosing a Response Variable Cont.
+========================================================
+- <small> Next, we imputed a 0 for values of `pounds_gained` that had 'No' for `weightgain` </small>
+- <small> We went from 116 NA's --> 6 NA's </small>
+```{r, include=FALSE}
+gained.dat$WG <- FALSE
+gained.dat$WG[gained.dat$weightgain=='Yes'] <- TRUE
+```
+
+```{r}
+summary(gained.dat$pounds_gained)["NA's"]
+gained.dat$pounds_gained[!gained.dat$WG] <- 0
+summary(gained.dat$pounds_gained)["NA's"]
+```
+
+
+Choosing a Response Variable Cont.
+========================================================
+- Lastly, we noticed `CalcTMM` had one missing value, so we decided to remove that row
+```{r}
+gained.dat <- gained.dat[!is.na(gained.dat$CalcTMM),]
+dim(gained.dat)
+```
