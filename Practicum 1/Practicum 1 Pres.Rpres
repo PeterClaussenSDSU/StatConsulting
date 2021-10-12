@@ -119,6 +119,120 @@ dim(gained.dat)
 ```
 
 
+Analysis of Weight Gained
+========================================================
+- (SA1) Calculated Total Metabolic minutes does not have a clear effect on weight gain
+```{r}
+plot(WG~CalcTMM,data=gained.dat)
+
+```
+</small>
+
+
+========================================================
+- Creating a simple linear model with Weight Gained and CalcTMM. The summary output of this model suggests that CalcTMM has very little effect on weight gain, as the p-value for CalcTMM is 0.21, quite large.
+```{r}
+SA1.model1 <- glm(WG ~ CalcTMM, data=gained.dat,family = binomial)
+```
+
+========================================================
+</small>
+```{r, echo=FALSE}
+summary(SA1.model1)
+```
+</small>
+
+========================================================
+
+(SA2) Effect of Shift on Weight Gained
+- We created another simple linear regression with shift and weight gained (Model 1).
+- The p values associated with each shift are greater than .01, suggesting shift has little effect on weight gained.
+
+```{r}
+SA2.model1 <- glm(WG ~ shift, data=gained.dat,family = binomial)
+```
+</small>
+
+========================================================
+
+```{r, echo=FALSE}
+summary(SA2.model1)
+```
+</small>
+
+========================================================
+
+(SA2) Effect of Shift on Weight Gained
+- We created another model predicting weight gained from the interaction between shift and CalcTMM (Model 2).
+- The p values associated with each shift are still greater than .01, suggesting shift has little effect on weight gained.
+```{r}
+SA12.model2 <- glm(WG ~ shift*CalcTMM, data=gained.dat,family = binomial)
+```
+
+========================================================
+```{r, echo=FALSE}
+summary(SA12.model2)
+```
+
+========================================================
+Model 3: Anthropometric Variables
+- We wanted to inspect if variables such as Gender, Age, and Height affect weight gained.
+- The p values associated with each shift are still greater than .01, suggesting the variables have little effect on weight gained.
+```{r}
+subset3a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "CalcTMM")])),]
+SA12.model3a <- glm(WG ~ gender + Age + shift + CalcTMM, data=subset3a.dat,family = binomial)
+```
+
+========================================================
+```{r,echo=FALSE}
+summary(SA12.model3a)
+```
+
+
+
+========================================================
+Model 4: Partition of CalcTMM
+- Total Met Minutes is calculated form vig.ex.time, mod.ex.Time, and walk.ex.time
+- We determined before that CalcTMM does not have a clear effect on weight gain, so we built a model with the variables that make up CalcTMM.
+- Still found no significant relationships with weight gained.
+```{r}
+subset4a.dat <- gained.dat[which(complete.cases(gained.dat[, c("gender", "Age", "shift", "Vig.ex.Time", "Mod.ex.time", "Walk.ex.Time")])),]
+SA12.model4a <- glm(WG ~ gender + Age + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=subset4a.dat, family = binomial)
+```
+
+========================================================
+```{r,echo=FALSE}
+summary(SA12.model4a)
+```
+
+
+========================================================
+All SA2 Model Comparisons
+</small>
+```{r, echo=FALSE}
+sjPlot::tab_model(SA2.model1, SA12.model2, SA12.model3a, SA12.model4a)
+
+```
+</small>
+
+========================================================
+
+Model 5: model 4 with BMI and initial bodyweight.
+- BMI contains height so height was excluded
+- initial BMI and initial body weight had small p values, suggesting they do affect weight gain
+
+
+
+========================================================
+Model 6: Interactions between BMI, shift, and CalcTMM
+
+-For this model, the following predictors had p-values <0.1: -shift10am:CalcTMM
+
+-initial_BMI:shift10am:CalcTMM
+
+-This suggests that, at significance level 0.1, these products are significant in predicting whether an employee has gained weight
+
+
 
 ```{r, echo=FALSE, include=FALSE}
 gained.dat['initial_bweight'] <- gained.dat$bweight - gained.dat$pounds_gained
@@ -386,7 +500,7 @@ Summary (Total MET Minutes)
 ========================================================
 <small>
 ```{r,echo=FALSE}
-tab_model(SA1.model1.poisson, SA1.model1.quasi, SA1.model1.zero)
+sjPlot::tab_model(SA1.model1.poisson, SA1.model1.quasi, SA1.model1.zero)
 ```
 </small>
 
@@ -395,7 +509,7 @@ Summary (Shift)
 ========================================================
 <small>
 ```{r,echo=FALSE}
-tab_model(SA2.model1.poisson, SA2.model1.quasi, SA2.model1.zero)
+sjPlot::tab_model(SA2.model1.poisson, SA2.model1.quasi, SA2.model1.zero)
 ```
 </small>
 
@@ -403,7 +517,7 @@ Summary (body weight)
 ========================================================
 <small>
 ```{r,echo=FALSE}
-tab_model(SA12.best.poisson, SA12.best.quasi, SA12.best.zero)
+sjPlot::tab_model(SA12.best.poisson, SA12.best.quasi, SA12.best.zero)
 ```
 </small>
 
