@@ -35,8 +35,7 @@ Specifically, we were asked to provide an analysis on two specific aims:
 Our technical report goes in depth answering these specific aims. We will proceed by summarizing our findings from the technical report.
 
 #### Analysis of Binary Response
-We first observed weight gain using the binary variable `weightgain`. We created roughly six models exploring what, if any, variables affect the binary variable `weightgain`. 
-- **Model 1** We consider Model 1 to describe the generalized linear models of weight gain versus solely total metabolic minutes and shift, respectively. Thus, we created a Model 1 for (SA1) and a Model 1 for (SA2). In Model 1 (SA1), a generalized linear model of the binomial family was used to observe weight gain versus total metabolic minutes. The results of this generalized linear model suggested that total metabolic minutes do not have a significant affect on weight gain. Similarly, our Model 1 (SA2) results suggested no shift had an affect on weight gain.
+We first observed weight gain using the binary variable `weightgain`. We created roughly six models exploring what, if any, variables affect the binary variable `weightgain`. We consider Model 1 to describe the generalized linear models of weight gain versus solely total metabolic minutes and shift, respectively. Thus, we created a Model 1 for (SA1) and a Model 1 for (SA2). In Model 1 (SA1), a generalized linear model of the binomial family was used to observe weight gain versus total metabolic minutes. The results of this generalized linear model suggested that total metabolic minutes do not have a significant affect on weight gain. Similarly, our Model 1 (SA2) results suggested no shift had an affect on weight gain. In the table below, we briefly show the other models we included in our technical report. These models were run to determine what variables affect weight gain. The two variables we found most significant were initial body weight and initial BMI, which we then used in our analysis of weight change as a continuous variable.
 
 
  Model| Formula            | Results
@@ -46,9 +45,9 @@ We first observed weight gain using the binary variable `weightgain`. We created
  3b | gender + age + height + shift + total metabolic minutes | No variables within gender, age, height, shift, total metabolic minutes had a significant affect on weight gain        
  4a | gender + age + shift + vig.ex.time + mod.ex.time + walk.ex.time  |  No variables within gender, age, shift, vig.ex.time, mod.ex.time, walk.ex.time had a significant affect on weight gain     
  4b | gender + age + height + shift + vig.ex.time + mod.ex.time + walk.ex.time |  No variables within gender, age, height, shift, vig.ex.time, mod.ex.time, walk.ex.time had a significant affect on weight gain
- 5a | gender + age + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial BMI | initial BMI was the only variable close to significance 
- 5b | gender + age + height + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial body weight | initial body weight was the only variable close to significance. After running the best model, given by R, we saw that initial body weight did have a significant affect on weight gain 
- 6  | initial BMI * shift * total metabolic minutes |  Various combinations of the formula are suggested to have a significant affect on weight gain
+ 5a | gender + age + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial BMI | Initial BMI is close to having a significant affect on weight gain with a p-value of just over 0.5
+ 5b | gender + age + height + shift + vig.ex.time + mod.ex.time + walk.ex.time + initial body weight | Initial body weight is close to having a significant affect on weight gain with a p-value of just over 0.5 in the original generalized linear model 
+ 6  | Initial BMI * shift * total metabolic minutes |  Various combinations of the formula are suggested to have a significant affect on weight gain
 
 #### Analysis of Continous Response
 
@@ -399,5 +398,4 @@ Zero-inflated Poisson |  | $P(Y=y_i)=\begin{cases} \pi & y_i=0 \\ (1-\pi)\frac{e
 <!-- #summary(zero.model4) -->
 <!-- tab_model(zero.model4) -->
 <!-- ``` -->
-
 
