@@ -117,3 +117,305 @@ Choosing a Response Variable Cont.
 gained.dat <- gained.dat[!is.na(gained.dat$CalcTMM),]
 dim(gained.dat)
 ```
+
+
+
+```{r, echo=FALSE, include=FALSE}
+gained.dat['initial_bweight'] <- gained.dat$bweight - gained.dat$pounds_gained
+gained.dat['initial_BMI'] <- (gained.dat$initial_bweight / (gained.dat$height)^2)*703
+```
+
+
+Analysis of Pounds Gained
+========================================================
+
+```{r,echo=FALSE, include=FALSE}
+sum(is.na(gained.dat$pounds_gained))
+gained.dat <- gained.dat[!is.na(gained.dat$pounds_gained),]
+nonzero.dat <- gained.dat[gained.dat$pounds_gained>0,]
+```
+
+
+
+```{r, echo=FALSE, include=FALSE}
+SA1.model1.lm <- lm(pounds_gained ~ CalcTMM, data=nonzero.dat)
+#par(mfrow=c(2,2))
+#plot(SA1.model1.lm)
+```
+
+```{r,eval=FALSE,echo=FALSE, include=FALSE}
+#equivalent model, just using glm instead of lm
+SA1.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = gaussian)
+SA1b.model1.gauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian)
+#summary(SA1.model1.gauss)
+#par(mfrow=c(2,2))
+#plot(SA1.model1.gauss)
+```
+
+```{r, echo=FALSE, include=FALSE}
+par(mfrow=c(2,2))
+SA1.model1.root <- lm(sqrt(pounds_gained) ~ CalcTMM, data=gained.dat)
+#plot(SA1.model1.root)
+```
+
+
+```{r, include=FALSE, echo=FALSE}
+SA1b.model1.loggauss <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = gaussian(link="log"))
+#par(mfrow=c(2,2))
+#plot(SA1b.model1.loggauss)
+```
+
+```{r, include=FALSE, echo=FALSE}
+gained.dat$LBS <- round(gained.dat$pounds_gained)
+nonzero.dat$LBS <- round(nonzero.dat$pounds_gained)
+```
+
+```{r, echo=FALSE, include=FALSE}
+SA1.model1.poisson <- glm(LBS ~ CalcTMM, data=gained.dat,family = poisson)
+#par(mfrow=c(2,2))
+#plot(SA1.model1.poisson)
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+SA1.model1.quasi <- glm(pounds_gained ~ CalcTMM, data=gained.dat,family = quasipoisson)
+#par(mfrow=c(2,2))
+#plot(SA1.model1.quasi)
+```
+
+```{r, echo=FALSE, include=FALSE}
+SA1b.model1.Gamma <- glm(pounds_gained ~ CalcTMM, data=nonzero.dat,family = Gamma)
+#par(mfrow=c(2,2))
+#plot(SA1b.model1.Gamma)
+```
+
+```{r, include=FALSE, echo=FALSE}
+library(pscl)
+```
+
+```{r, warning=FALSE, echo=FALSE, include=FALSE}
+SA1.model1.zero <- zeroinfl(LBS ~ CalcTMM, data = gained.dat)
+#tab_model(SA1.model1.zero)
+```
+
+
+```{r, echo=FALSE, include=FALSE}
+SA2.model1.lm <- lm(pounds_gained ~ shift, data=gained.dat)
+#par(mfrow=c(2,2))
+#plot(SA2.model1.lm)
+```
+
+```{r, echo=FALSE, include=FALSE}
+SA2.model1.root <- lm(sqrt(pounds_gained) ~ shift, data=gained.dat)
+#par(mfrow=c(2,2))
+#plot(SA2.model1.root)
+```
+
+```{r, echo=FALSE, include=FALSE}
+SA2.model1.lmlog <- lm(log(pounds_gained+0.01) ~ shift, data=gained.dat)
+#par(mfrow=c(2,2))
+#plot(SA2.model1.lmlog)
+
+SA2b.model1.loggauss <- glm(pounds_gained ~ shift, data=nonzero.dat,family = gaussian(link="log"))
+#par(mfrow=c(2,2))
+#plot(SA2b.model1.loggauss)
+```
+
+```{r, echo=FALSE, include=FALSE}
+SA2.model1.poisson <- glm(LBS ~ shift, data=gained.dat,family = poisson)
+#par(mfrow=c(2,2))
+#plot(SA2.model1.poisson)
+#tab_model(SA2.model1.poisson)
+```
+
+```{r, echo=FALSE, include=FALSE}
+SA2.model1.quasi <- glm(pounds_gained ~ shift, data=gained.dat,family = quasipoisson)
+#par(mfrow=c(2,2))
+#plot(SA2.model1.quasi)
+#tab_model(SA2.model1.quasi)
+```
+
+```{r, echo=FALSE, include=FALSE}
+SA2b.model1.Gamma <- glm(pounds_gained+0.01 ~ shift, data=gained.dat,family = Gamma)
+#par(mfrow=c(2,2))
+#plot(SA2b.model1.Gamma)
+```
+
+```{r, echo=FALSE, include=FALSE}
+SA2.model1.zero <- zeroinfl(LBS ~ shift, data = gained.dat)
+#tab_model(SA2.model1.zero)
+```
+
+
+```{r, include=FALSE}
+SA12.best.poisson <- glm(LBS ~ initial_bweight, data=gained.dat,family = poisson)
+#par(mfrow=c(2,2))
+#plot(SA12.best.poisson)
+
+SA12.best.quasi <- glm(pounds_gained ~ initial_bweight, data=gained.dat,family = quasipoisson)
+#par(mfrow=c(2,2))
+#plot(SA12.best.quasi)
+```
+
+```{r, include=FALSE}
+SA12.best.zero <- zeroinfl(LBS ~ initial_bweight, data = gained.dat)
+#tab_model(SA12.best.poisson, SA12.best.quasi, SA12.best.zero)
+```
+
+
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+# models developed during data exploration
+SA12.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=gained.dat,family = quasipoisson)
+SA12b.model4.quasi <- glm(pounds_gained ~ gender + Age + height + shift + Vig.ex.Time  + Mod.ex.time + Walk.ex.Time, data=nonzero.dat,family = quasipoisson)
+#summary(SA12.model4.quasi)
+#summary(SA12b.model4.quasi)
+tab_model(SA12.model4.quasi, SA12b.model4.quasi)
+par(mfrow=c(2,2))
+plot(SA12.model4.quasi)
+```
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+par(mfrow=c(2,2))
+plot(SA12b.model4.quasi)
+```
+
+
+```{r,eval=FALSE,echo=FALSE,include=FALSE}
+# models developed during data exploration
+zero.model4 <- zeroinfl(LBS ~ gender + Age + height + shift + Vig.ex.Time + Mod.ex.time + Walk.ex.Time + initial_BMI, data = gained.dat)
+#summary(zero.model4)
+tab_model(zero.model4)
+```
+
+
+```{r,fig.width=10, fig.height=6, echo=FALSE}
+par(mfrow=c(1,2))
+hist(gained.dat$pounds_gained, freq = FALSE,breaks=10, main='Pounds Gained',xlab="Pounds")
+
+hist(nonzero.dat$pounds_gained, freq = FALSE,breaks=10, main='Pounds Gained, Nonzero Only',xlab="Pounds")
+```
+
+We consider the `pounds_gained` variable and added zeros where `pounds_gained` was missing but `weightgain` was `FALSE`. These data were highly skewed, even in the absence of the added zeros. Since these data would not likely be appropriate for linear models, we consider several families of distributions.
+
+Summary of Statistical Models (LM and GLM)
+========================================================
+
+Linear
+========================================================
+
+- $E(y_i) = \mu_{i} = \mathbf{\beta} \mathbf{X}$ 
+
+- $y_i \sim \mathcal{N}(\mu_i,\sigma^2)$
+
+
+Square Root Transformation
+========================================================
+
+- $\sqrt{y_{i}} = \mathbf{\beta} \mathbf{X}$  
+
+- $y_i \sim \mathcal{N}(\sqrt{\mu},\sigma)$ 
+
+The distribution of weight gain is highly left-skewed. We may correct this by applying a square-root transformation. The square-root transformation does appear to improve upon the skewness of the data, although the residuals are not clearly normally distributed.
+
+Log
+========================================================
+
+- $\log{y_{i}} = \mathbf{\beta} \mathbf{X}$ 
+
+- $y_i \sim \mathcal{N}(\sqrt{\mu},\sigma)$ 
+
+The log transformation is also commonly used to correct skewed data. The log-transform, however, is not defined for 0 values. We ust add a small, nonzero value to use this tranformation on the full *pounds gained* data.
+
+Poisson
+========================================================
+
+- $E(y_i) = \mu_{i} = n_i e^{\mathbf{\beta} \mathbf{X}}$
+
+- $y_i \sim \frac{e^{-\lambda_i} \lambda_i ^y}{y!}$
+
+- $Var(y_i) =  E(y_i)=\lambda$
+
+The square root transformation is commonly applied to count data. This suggests a possible Poisson model for pounds gained. Poisson regression requires integer values. We've rounded pounds gained for this. This Poisson model provides a similar improvement on residual errors as did the square root transform. Thus, a Poisson model may be recommended for these data.
+
+
+QuasiPoisson
+========================================================
+
+- $E(y_i) = \mu_{i} = n_i e^{\mathbf{\beta} \mathbf{X}}$
+
+- $y_i \sim \frac{e^{-\lambda_i} \lambda_i ^y}{y!}$
+
+- $Var(y_i) = \phi E(y_i)=\phi \lambda$
+
+$\phi$ is the dispersion parameter that allows variances to be proprtional to means. The QuasiPoisson family does not require integer values. 
+
+Gamma
+========================================================
+
+- $E(y_i) = \mu_{i} =  e^{\mathbf{\beta} \mathbf{X}}$
+
+- $y_i \sim \frac{\beta^{\alpha}} {\Gamma(\alpha)}y_i^{\alpha-1} e^{-y_i \beta}$
+
+The shape of the distribution of weight gain suggests a gamma distribution. However, the gamma distribution is not defined for 0 values. 
+
+Zero-inflated Poisson
+========================================================
+
+$$
+P(Y=y_i)=\begin{cases} \pi & y_i=0 \\ (1-\pi)\frac{e^{-\lambda} \lambda ^y_i}{y_i!} & y_i=1,2,... \end{cases}
+$$
+
+A first stage is modeled as binomial - weight gain is either false (0 pounds gained) or true (a non-zero pounds gained value), with a defined probability. Then, conditional on weight gain being true, the remaining values are fit to a Poisson distribution.
+
+Summary of Continuous Model Diagnostics
+========================================================
+
+```{r,fig.width=6,fig.height=6,echo=FALSE}
+par(mfrow=c(3,2))
+plot(SA1.model1.lm,which=2,main = 'Linear')
+plot(SA1.model1.root,which=2,main = 'Square Root')
+plot(SA2.model1.lmlog,which=2,main = 'Log')
+plot(SA1.model1.poisson,which=2,main = 'Poisson')
+plot(SA1.model1.quasi,which=2,main = 'Quasipoisson')
+plot(SA1b.model1.Gamma,which=2,main = 'Gamma')
+```
+
+
+Summary (Total MET Minutes)
+========================================================
+<small>
+```{r,echo=FALSE}
+tab_model(SA1.model1.poisson, SA1.model1.quasi, SA1.model1.zero)
+```
+</small>
+
+
+Summary (Shift)
+========================================================
+<small>
+```{r,echo=FALSE}
+tab_model(SA2.model1.poisson, SA2.model1.quasi, SA2.model1.zero)
+```
+</small>
+
+Summary (body weight)
+========================================================
+<small>
+```{r,echo=FALSE}
+tab_model(SA12.best.poisson, SA12.best.quasi, SA12.best.zero)
+```
+</small>
+
+Conclusions and Recommendations
+========================================================
+The specific aims stated for this project are partially supported with these data. Specifically, we find no significant effect of calculated *Total MET-Minutes* (`CalcTMM`) or *shift* on `weightgain` as a binomial response, using logistic regression models. 
+
+========================================================
+However, we do find a statistical significant effect of `shift` on *pounds gained*. This result is most strongly suggested using a zero-inflated poisson model to account for the individuals reporting 0 pounds gained, and weakly supported using a quasi-poisson model to account for the excess 0 values when no weight gain is reported.
+
+========================================================
+The logistic regression model suggest that *initial body weight* or *initial BMI* are possible predictors. This was identified from a step-wise model selection algorithm implemented using the `stepAIC` function is R. We considered other combinations of variables, but the best, simplest model included only BMI or initial body weight.
+
+========================================================
+When interactions among `shift`, `CalcTMM` and `initial_BMI` are included in the model, there is a slight (but not significant at p<0.05) suggestion that weight gain may differ among shifts. Thus, initial body weight or initial BMI may be a confounding factor that influences the two variables identified in the specific aims. We note, however, that there were ~100 observations that did not have initial body weight or initial BMI, so this may warrant further investigation, and greater care should be taken when collecting data.
