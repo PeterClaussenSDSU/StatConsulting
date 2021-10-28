@@ -54,7 +54,6 @@ We may be able to reduce the number of genes considered with further guidance fr
 
 ```{r}
 sum(grepl('^ALDH',genes))
-aldh.dat <- cell.dat[grepl('^ALDH',genes),]
 ```
 
 It also appears these data include non-protein coding genes, for example, we find examples of Long Intergenic Non-Protein Coding RNA (LINC). We also find non-cytoplasmic proteins such as Mitochondrial Ribosomal Protein (MRPL)
@@ -99,10 +98,11 @@ sum(grepl('^RP[1-9]',genes))
 
 ### Question 1.
 
-Is there are subset of genes that, *a priori* would be preferred to differentiate among cell lineages?
+Is there are subset of genes that, *a priori* would be preferred to differentiate among cell lineages? For example, perhaps zinc-finger protein expression is discriminatory?
 
-```{r,eval=FALSE}
-distances <- dist(t(aldh.dat), method="euclidean")
+```{r,fig.width=6,fig.height=8}
+znf.dat <- cell.dat[grepl('^ZNF',genes),]
+distances <- dist(t(znf.dat), method="euclidean")
 clusters <- hclust(distances,method="ward.D")
 ggdendrogram(clusters,rotate=TRUE)
 ```
@@ -200,7 +200,7 @@ ggdendrogram(clusters,rotate=TRUE)
 
 ## PCA 
 
-A final approach to dimension reduction is to use principal component analysis to indentify pseudovariables that capture variation in gene expression patterns. We present a PCA of the 1100 candidate genes identified in the previous step. PCA may be computionally intractable for the full data set.
+A final approach to dimension reduction is to use principal component analysis to indentify pseudovariables that capture variation in gene expression patterns. We present a PCA of the most commonly expressed genes identified in the previous step. PCA may be computionally intractable for the full data set.
 
 ```{r}
 cell.pca <- prcomp(t(work.dat), center = TRUE,scale. = TRUE)
