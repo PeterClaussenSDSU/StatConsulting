@@ -107,6 +107,11 @@ clusters <- hclust(distances,method="ward.D")
 ggdendrogram(clusters,rotate=TRUE)
 ```
 
+```{r,fig.width=6,fig.height=8}
+heatmap(t(work.dat))
+```
+
+
 ## Most commonly expressed genes
 
 We might further reduce the number by selecting those with gene expression patterns approximately normal. Since there are still a large number, we use an approximation. When data are normally distributed (or, at least, symmetrically distributed), then the median will be close to the mean. For the current subset of genes, we can visualize this by plotting the median gene expression level against the corresponding mean. We bound this by a band representing 95-105% - that is, we wish to select genes where the mean is within 5%, plus or minus, of the mean.
@@ -153,6 +158,10 @@ ggdendrogram(clusters,rotate=TRUE)
 ```
 
 
+```{r,fig.width=6,fig.height=8}
+heatmap(t(work.dat))
+```
+
 ## Uncommon, but not rare, genes
 
 Distinct cell types may be distiquished not simply by gene expression levels, but by gene expression patterns. That is, a certain gene may only be expressed in certain cell types and could thus be usefully diagnostic, while other genes (i.e. glycolytic pathway) are expressed in nearly all cells and may be of little use in determining cell groups. 
@@ -190,6 +199,10 @@ This results in approximately 1100 candidate genes. A potential dendrogram is pr
 distances <- dist(t(incidence.dat), method="euclidean")
 clusters <- hclust(distances,method="ward.D")
 ggdendrogram(clusters,rotate=TRUE)
+```
+
+```{r,fig.width=6,fig.height=8}
+heatmap(t(incidence.dat))
 ```
 
 ## 1) Gene Ontology
@@ -267,10 +280,13 @@ for(i in 1:dim(tmp.dat)[1]) {
 ```
 
 
+```{r,fig.width=6,fig.height=8}
+heatmap(t(znf.dat))
+```
 
 ## PCA 
 
-A final approach to dimension reduction is to use principal component analysis to indentify pseudovariables that capture variation in gene expression patterns. We present a PCA of the most commonly expressed genes identified in the previous step. PCA may be computionally intractable for the full data set.
+A final approach to dimension reduction is to use principal component analysis to identify pseudovariables that capture variation in gene expression patterns. We present a PCA of the most commonly expressed genes identified in the previous step. PCA may be computationally intractable for the full data set.
 
 ```{r}
 cell.pca <- prcomp(t(work.dat), center = TRUE,scale. = TRUE)
