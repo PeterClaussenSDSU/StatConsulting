@@ -37,12 +37,157 @@ cell.dat <- cell.dat[,-1]
 dim(cell.dat)
 ```
 
+What is the variation in maximum expression levels?
+
+```{r}
+row.max <- apply(cell.dat,1,max)
+hist(row.max)
+```
+
+
 These data represent approximately 13000 genes and 2700 cell lines. For simplicity at this stage, we'll assume all 2700 cell lines are valid. 
 
 We could potentially use all 13000+ gene expression levels to generate a cluster analysis for cell lines. This, however, is computationally intractable, so we wish to reduce the dimensions of the problem. Briefly, we consider four dimension reduction procedures.
 
 ```{r,echo=FALSE,eval=FALSE}
 distances <- dist(t(cell.dat), method="euclidean")
+clusters <- hclust(distances,method="ward.D")
+ggdendrogram(clusters,rotate=TRUE)
+```
+
+We consider the expression pattern of some randomly selected genes.
+
+```{r,fig.width=6,fig.height=8}
+random.samples <- sample(1:dim(cell.dat)[1],12)
+random.samples
+par(mfrow=c(4,3))
+for(i in random.samples) {
+  tmp <- unlist(cell.dat[i,])
+  hist(tmp,main=paste("Histogram,",genes[i]))
+}
+```
+
+
+## Commonly expressed genes
+
+For many genes, it appears that only a small proportion of cell express these genes. We may use this as a dimension reduction procedure. We can, for example, exclude all genes where the median expression value is 0 (that is, genes that are not expressed in at least one-half of all cell lines.). 
+
+```{r}
+row.median <- apply(cell.dat,1,median)
+dup <- row.median
+summary(row.median)
+dup <- row.median[row.median>0]
+hist(dup)
+work.dat <- cell.dat[row.median>0,]
+genes.common <- genes[row.median>0]
+dim(work.dat)
+```
+
+We plot the histograms of some of the common genes
+
+```{r,fig.width=6,fig.height=8}
+print(common.sample <- sample(genes.common,12))
+common.mask <- genes %in% common.sample
+common.dat <- cell.dat[common.mask,]
+common.names <- genes[common.mask]
+par(mfrow=c(4,3))
+for(i in 1:dim(common.dat)[1]) {
+  tmp <- unlist(common.dat[i,])
+  hist(tmp,main=paste("Histogram, ",common.names[i]))
+}
+```
+
+
+
+This leaves us with 273 genes, a more reasonable number to work with. A proposed dendrogram, showing potential cell clusters follows.
+
+```{r,fig.width=6,fig.height=8}
+distances <- dist(t(work.dat), method="euclidean")
+clusters <- hclust(distances,method="ward.D")
+ggdendrogram(clusters,rotate=TRUE)
+```
+
+## Most commonly expressed genes
+
+We might further reduce the number by selecting those with gene expression patterns approximately normal. Since there are still a large number, we use an approximation. When data are normally distributed (or, at least, symmetrically distributed), then the median will be close to the mean. For the current subset of genes, we can visualize this by plotting the median gene expression level against the corresponding mean. We bound this by a band representing 95-105% - that is, we wish to select genes where the mean is within 5%, plus or minus, of the mean.
+
+```{r,echo=FALSE}
+row.means <- apply(cell.dat,1,mean)
+row.median <- apply(cell.dat,1,median)
+plot(row.median,row.means)
+abline(0,1,col='blue')
+abline(0,1.05,col='red')
+abline(0,0.95,col='red')
+```
+
+```{r}
+ratio <- row.means/row.median
+mask <- ratio<1.05 & ratio>0.95
+sum(mask)
+work.dat <- cell.dat[mask,]
+genes.work <- genes[mask]
+dim(work.dat)
+```
+
+We print some sample histograms for common genes with approximately symmetric distributions.
+
+```{r,fig.width=6,fig.height=8}
+print(work.sample <- sample(genes.work,12))
+
+work.mask <- genes %in% work.sample
+common.dat <- cell.dat[work.mask,]
+common.names <- genes[work.mask]
+par(mfrow=c(4,3))
+for(i in 1:dim(common.dat)[1]) {
+  tmp <- unlist(common.dat[i,])
+  hist(tmp,main=paste("Histogram, ",common.names[i]))
+}
+```
+
+A potential dendrogram based on this subset of genes follows.
+
+```{r,fig.width=6,fig.height=8}
+distances <- dist(t(work.dat), method="euclidean")
+clusters <- hclust(distances,method="ward.D")
+ggdendrogram(clusters,rotate=TRUE)
+```
+
+
+## Uncommon, but not rare, genes
+
+Distinct cell types may be distiquished not simply by gene expression levels, but by gene expression patterns. That is, a certain gene may only be expressed in certain cell types and could thus be usefully diagnostic, while other genes (i.e. glycolytic pathway) are expressed in nearly all cells and may be of little use in determining cell groups. 
+
+Since we have seen that the majority genes are expressed in less than half the cells, we don't wish to use very rare genes. Instead, we propose to consider genes that are expressed in at least 10% of cell lines, but no more than 20%.
+
+```{r}
+incidence.dat <- cell.dat
+incidence.dat[incidence.dat>0.01] <- 1
+
+incidences <- apply(incidence.dat,1,mean)
+hist(incidences)
+
+incidence.dat <- incidence.dat[incidences>0.1 & incidences<0.2,]
+genes.incidence <- genes[incidences>0.1 & incidences<0.2]
+dim(incidence.dat)
+```
+
+```{r,fig.width=6,fig.height=8}
+print(incidence.sample <- sample(genes.incidence,12))
+
+incidence.mask <- genes %in% incidence.sample
+tmp.dat <- cell.dat[incidence.mask,]
+tmp.names <- genes[incidence.mask]
+par(mfrow=c(4,3))
+for(i in 1:dim(tmp.dat)[1]) {
+  tmp <- unlist(tmp.dat[i,])
+  hist(tmp,main=paste("Histogram, ",tmp.names[i]))
+}
+```
+
+This results in approximately 1100 candidate genes. A potential dendrogram is presented below:
+
+```{r,fig.width=6,fig.height=8}
+distances <- dist(t(incidence.dat), method="euclidean")
 clusters <- hclust(distances,method="ward.D")
 ggdendrogram(clusters,rotate=TRUE)
 ```
@@ -101,101 +246,26 @@ sum(grepl('^RP[1-9]',genes))
 Is there are subset of genes that, *a priori* would be preferred to differentiate among cell lineages? For example, perhaps zinc-finger protein expression is discriminatory?
 
 ```{r,fig.width=6,fig.height=8}
+znf.genes <- genes[grepl('^ZNF',genes)]
 znf.dat <- cell.dat[grepl('^ZNF',genes),]
 distances <- dist(t(znf.dat), method="euclidean")
 clusters <- hclust(distances,method="ward.D")
 ggdendrogram(clusters,rotate=TRUE)
 ```
 
-## 1) Commonly expressed genes
-
-We have considered the expression pattern of some randomly selected genes.
-
 ```{r,fig.width=6,fig.height=8}
-random.samples <- sample(1:dim(cell.dat)[1],12)
-random.samples
+print(znf.sample <- sample(znf.genes,12))
+
+znf.mask <- genes %in% znf.sample
+tmp.dat <- cell.dat[znf.mask,]
+tmp.names <- genes[znf.mask]
 par(mfrow=c(4,3))
-for(i in random.samples) {
-  #print(summary(cell.dat[i,]))
-  tmp <- as.numeric(cell.dat[i,])
-  hist(tmp,main=paste("Histogram, Row",i))
+for(i in 1:dim(tmp.dat)[1]) {
+  tmp <- unlist(tmp.dat[i,])
+  hist(tmp,main=paste("Histogram, ",tmp.names[i]))
 }
 ```
 
-For many genes, it appears that only a small proportion of cell express these genes. We may use this as a dimension reduction procedure. We can, for example, exclude all genes where the median expression value is 0 (that is, genes that are not expressed in at least one-half of all cell lines.). 
-
-```{r}
-row.median <- apply(cell.dat,1,median)
-dup <- row.median
-summary(row.median)
-dup <- row.median[row.median>0]
-hist(dup)
-work.dat <- cell.dat[row.median>0,]
-genes.work <- genes[row.median>0]
-dim(work.dat)
-```
-
-This leaves us with 273 genes, a more reasonable number to work with. A proposed dendrogram, showing potential cell clusters follows.
-
-```{r,fig.width=6,fig.height=8}
-distances <- dist(t(work.dat), method="euclidean")
-clusters <- hclust(distances,method="ward.D")
-ggdendrogram(clusters,rotate=TRUE)
-```
-
-We might further reduce the number by selecting those with gene expression patterns approximately normal. Since there are still a large number, we use an approximation. When data are normally distributed (or, at least, symmetrically distributed), then the median will be close to the mean. For the current subset of genes, we can visualize this by plotting the median gene expression level against the corresponding mean. We bound this by a band representing 95-105% - that is, we wish to select genes where the mean is within 5%, plus or minus, of the mean.
-
-```{r,echo=FALSE}
-row.means <- apply(cell.dat,1,mean)
-row.median <- apply(cell.dat,1,median)
-plot(row.median,row.means)
-abline(0,1,col='blue')
-abline(0,1.05,col='red')
-abline(0,0.95,col='red')
-```
-
-```{r}
-ratio <- row.means/row.median
-mask <- ratio<1.05 & ratio>0.95
-sum(mask)
-work.dat <- cell.dat[mask,]
-genes.work <- genes[mask]
-dim(work.dat)
-```
-
-A potential dendrogram based on this subset of genes follows.
-
-```{r,fig.width=6,fig.height=8}
-distances <- dist(t(work.dat), method="euclidean")
-clusters <- hclust(distances,method="ward.D")
-ggdendrogram(clusters,rotate=TRUE)
-```
-
-
-## Uncommon genes
-
-Distinct cell types may be distiquished not simply by gene expression levels, but by gene expression patterns. That is, a certain gene may only be expressed in certain cell types and could thus be usefully diagnostic, while other genes (i.e. glycolytic pathway) are expressed in nearly all cells and may be of little use in determining cell groups. 
-
-Since we have seen that the majority genes are expressed in less than half the cells, we don't wish to use very rare genes. Instead, we propose to consider genes that are expressed in at least 10% of cell lines, but no more than 20%.
-
-```{r}
-incidence.dat <- cell.dat
-incidence.dat[incidence.dat>0.01] <- 1
-
-incidences <- apply(incidence.dat,1,mean)
-hist(incidences)
-
-incidence.dat <- incidence.dat[incidences>0.1 & incidences<0.2,]
-genes.incidence <- genes[incidences>0.1 & incidences<0.2]
-dim(incidence.dat)
-```
-This results in approximately 1100 candidate genes. A potential dendrogram is presented below:
-
-```{r,fig.width=6,fig.height=8}
-distances <- dist(t(incidence.dat), method="euclidean")
-clusters <- hclust(distances,method="ward.D")
-ggdendrogram(clusters,rotate=TRUE)
-```
 
 
 ## PCA 
