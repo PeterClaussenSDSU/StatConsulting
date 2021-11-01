@@ -6,14 +6,15 @@ author:
 - Stephanie Liebl
 date: "10/26/2021"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(cluster)
 library(ggdendro)
+set.seed(2)
 ```
 
 # Introduction
@@ -67,7 +68,7 @@ for(i in random.samples) {
 }
 ```
 
-
+\pagebreak
 ## Commonly expressed genes
 
 For many genes, it appears that only a small proportion of cell express these genes. We may use this as a dimension reduction procedure. We can, for example, exclude all genes where the median expression value is 0 (that is, genes that are not expressed in at least one-half of all cell lines.). 
@@ -111,7 +112,7 @@ ggdendrogram(clusters,rotate=TRUE)
 heatmap(t(work.dat))
 ```
 
-
+\pagebreak
 ## Most commonly expressed genes
 
 We might further reduce the number by selecting those with gene expression patterns approximately normal. Since there are still a large number, we use an approximation. When data are normally distributed (or, at least, symmetrically distributed), then the median will be close to the mean. For the current subset of genes, we can visualize this by plotting the median gene expression level against the corresponding mean. We bound this by a band representing 95-105% - that is, we wish to select genes where the mean is within 5%, plus or minus, of the mean.
@@ -162,6 +163,8 @@ ggdendrogram(clusters,rotate=TRUE)
 heatmap(t(work.dat))
 ```
 
+\pagebreak
+
 ## Uncommon, but not rare, genes
 
 Distinct cell types may be distiquished not simply by gene expression levels, but by gene expression patterns. That is, a certain gene may only be expressed in certain cell types and could thus be usefully diagnostic, while other genes (i.e. glycolytic pathway) are expressed in nearly all cells and may be of little use in determining cell groups. 
@@ -205,7 +208,9 @@ ggdendrogram(clusters,rotate=TRUE)
 heatmap(t(incidence.dat))
 ```
 
-## 1) Gene Ontology
+\pagebreak
+
+## Gene Ontology
 
 We may be able to reduce the number of genes considered with further guidance from the researcher. A brief survey of the descriptors associate with rows suggest families of genes may be used to reduce the dimensions of the problem. For example, there appear to be 12 different aldehyde dehydrogenase genes represented in these data. 
 
@@ -284,6 +289,7 @@ for(i in 1:dim(tmp.dat)[1]) {
 heatmap(t(znf.dat))
 ```
 
+\pagebreak
 ## PCA 
 
 A final approach to dimension reduction is to use principal component analysis to identify pseudovariables that capture variation in gene expression patterns. We present a PCA of the most commonly expressed genes identified in the previous step. PCA may be computationally intractable for the full data set.
