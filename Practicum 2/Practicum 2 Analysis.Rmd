@@ -1,0 +1,333 @@
+---
+title: "Practicum 2"
+author:
+- Peter Claussen
+- Maggie Germundson
+- Stephanie Liebl
+date: "11/2/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(cluster)
+library(ggdendro)
+set.seed(2)
+```
+
+# Introduction
+
+
+## Data Dimensions
+
+```{r,echo=FALSE}
+if(!file.exists('single.cell.Rda')) {
+  cell.dat <- read.csv('single_cell.csv',header=TRUE)
+  save(cell.dat,file='single.cell.Rda')
+} else {
+  load(file='single.cell.Rda')
+}
+#first column are the gene identifiers
+genes <- cell.dat[,1]
+#first row are barcodes for cell lines
+bar.code <- cell.dat[1,]
+cell.dat <- cell.dat[,-1]
+dim(cell.dat)
+```
+
+What is the variation in maximum expression levels?
+
+```{r,eval=FALSE}
+row.max <- apply(cell.dat,1,max)
+hist(row.max)
+```
+
+
+```{r,echo=FALSE,eval=FALSE}
+distances <- dist(t(cell.dat), method="euclidean")
+clusters <- hclust(distances,method="ward.D")
+ggdendrogram(clusters,rotate=TRUE)
+```
+
+
+
+```{r,eval=FALSE,fig.width=6,fig.height=8}
+random.samples <- sample(1:dim(cell.dat)[1],12)
+random.samples
+par(mfrow=c(4,3))
+for(i in random.samples) {
+  tmp <- unlist(cell.dat[i,])
+  hist(tmp,main=paste("Histogram,",genes[i]))
+}
+```
+
+\pagebreak
+## Commonly expressed genes
+
+```{r}
+row.median <- apply(cell.dat,1,median)
+dup <- row.median
+summary(row.median)
+dup <- row.median[row.median>0]
+hist(dup)
+work.dat <- cell.dat[row.median>0,]
+genes.common <- genes[row.median>0]
+dim(work.dat)
+```
+
+We plot the histograms of some of the common genes
+
+```{r,fig.width=6,fig.height=8}
+print(common.sample <- sample(genes.common,12))
+common.mask <- genes %in% common.sample
+common.dat <- cell.dat[common.mask,]
+common.names <- genes[common.mask]
+par(mfrow=c(4,3))
+for(i in 1:dim(common.dat)[1]) {
+  tmp <- unlist(common.dat[i,])
+  hist(tmp,main=paste("Histogram, ",common.names[i]))
+}
+```
+
+
+
+```{r,eval=FALSE,fig.width=6,fig.height=8}
+distances <- dist(t(work.dat), method="euclidean")
+clusters <- hclust(distances,method="ward.D")
+ggdendrogram(clusters,rotate=TRUE)
+```
+
+```{r,eval=FALSE,fig.width=6,fig.height=8}
+heatmap(t(work.dat))
+```
+
+\pagebreak
+## Most commonly expressed genes
+
+```{r,echo=FALSE}
+row.means <- apply(cell.dat,1,mean)
+row.median <- apply(cell.dat,1,median)
+plot(row.median,row.means)
+abline(0,1,col='blue')
+abline(0,1.05,col='red')
+abline(0,0.95,col='red')
+```
+
+```{r}
+ratio <- row.means/row.median
+mask <- ratio<1.05 & ratio>0.95
+sum(mask)
+work.dat <- cell.dat[mask,]
+genes.work <- genes[mask]
+dim(work.dat)
+```
+
+We print some sample histograms for common genes with approximately symmetric distributions.
+
+```{r,fig.width=6,fig.height=8}
+print(work.sample <- sample(genes.work,12))
+
+work.mask <- genes %in% work.sample
+common.dat <- cell.dat[work.mask,]
+common.names <- genes[work.mask]
+par(mfrow=c(4,3))
+for(i in 1:dim(common.dat)[1]) {
+  tmp <- unlist(common.dat[i,])
+  hist(tmp,main=paste("Histogram, ",common.names[i]))
+}
+```
+
+A potential dendrogram based on this subset of genes follows.
+
+```{r}
+distances <- dist(t(work.dat), method="euclidean")
+clusters <- hclust(distances,method="ward.D")
+```
+
+```{r,eval=FALSE,fig.width=6,fig.height=8}
+ggdendrogram(clusters,rotate=TRUE)
+```
+
+
+```{r,eval=FALSE,fig.width=6,fig.height=8}
+heatmap(t(work.dat))
+```
+
+
+Code borrowed from Practical Data Science with R 
+```{r}
+sqr_edist <- function(x,y) {
+  sum((x-y)^2)
+}
+wss_cluster <- function(clustermat) {
+  c0 <- colMeans(clustermat)
+  sum(apply(clustermat, 1, FUN= function(row){sqr_edist(row,c0)}))
+}
+wss_total <- function(dmatrix,labels) {
+  wsstot <- 0
+  k <- length(unique(labels)) 
+  for(i in 1 :k) {
+    wsstot <- wsstot + wss_cluster(subset(dmatrix, labels==i))
+  }
+  wsstot
+}
+
+get_wss <- function(dmatrix, max_clusters) {
+  wss = numeric(max_clusters)
+  wss[1] <- wss_cluster(dmatrix)
+  d <- dist(dmatrix, method='euclidean')
+  pfit <- hclust(d, method='ward.D')
+  for(k in 2:max_clusters) {
+    labels <- cutree(pfit,k=k)
+    wss[k] <- wss_total(dmatrix, labels)
+  }
+  wss
+}
+```
+
+```{r}
+library(ggplot2)
+kmax=20
+cluster_meas <- data.frame(nclusters=1:kmax,
+                             wss = get_wss(work.dat,kmax))
+breaks <- 1:kmax
+ggplot(cluster_meas,aes(x=nclusters,y=wss)) + geom_point() + geom_line() +
+  scale_x_continuous(breaks=breaks)
+```
+
+Following the logic from the book, we decide to have 6 groups. We assign groups to data, first by creating a new data frame
+```{r}
+grouped.work.dat <- data.frame(t(work.dat))
+names(grouped.work.dat) <- genes.work
+grouped.work.dat$Group <- cutree(clusters,k=6)
+grouped.work.dat$Group <- as.factor(grouped.work.dat$Group)
+```
+
+We now have cells associated in groups. Which gene expression levels are different by group?
+
+First, manually,
+
+```{r}
+#PMC Stephanie will write a loop to create a table of gene names and whether they are differentially expressed
+fmla <- as.formula(paste(genes.work[67], " ~ Group"))
+aov.tmp <-aov(fmla,data=grouped.work.dat)
+aov.tbl <- summary(aov.tmp)
+aov.tbl[[1]][1,'Pr(>F)']
+```
+
+We need to determine a critical $\alpha$ to control for false discovery or false positive rates. That is, adjust alpha to be very much smaller. How small? FDR Correction? Bonferri Correction?
+
+Use for testing $0.05^n$
+
+
+\pagebreak
+
+## Uncommon, but not rare, genes
+
+```{r}
+incidence.dat <- cell.dat
+incidence.dat[incidence.dat>0.01] <- 1
+
+incidences <- apply(incidence.dat,1,mean)
+hist(incidences)
+
+incidence.dat <- incidence.dat[incidences>0.1 & incidences<0.2,]
+genes.incidence <- genes[incidences>0.1 & incidences<0.2]
+dim(incidence.dat)
+```
+
+```{r,fig.width=6,fig.height=8}
+print(incidence.sample <- sample(genes.incidence,12))
+
+incidence.mask <- genes %in% incidence.sample
+tmp.dat <- cell.dat[incidence.mask,]
+tmp.names <- genes[incidence.mask]
+par(mfrow=c(4,3))
+for(i in 1:dim(tmp.dat)[1]) {
+  tmp <- unlist(tmp.dat[i,])
+  hist(tmp,main=paste("Histogram, ",tmp.names[i]))
+}
+```
+
+
+```{r,eval=FALSE,fig.width=6,fig.height=8}
+distances <- dist(t(incidence.dat), method="euclidean")
+clusters <- hclust(distances,method="ward.D")
+ggdendrogram(clusters,rotate=TRUE)
+```
+
+```{r,eval=FALSE,fig.width=6,fig.height=8}
+heatmap(t(incidence.dat))
+```
+
+\pagebreak
+
+## Gene Ontology
+
+
+
+### Question 1.
+
+Is there are subset of genes that, *a priori* would be preferred to differentiate among cell lineages? For example, perhaps zinc-finger protein expression is discriminatory?
+
+```{r,fig.width=6,fig.height=8}
+znf.genes <- genes[grepl('^ZNF',genes)]
+znf.dat <- cell.dat[grepl('^ZNF',genes),]
+distances <- dist(t(znf.dat), method="euclidean")
+clusters <- hclust(distances,method="ward.D")
+ggdendrogram(clusters,rotate=TRUE)
+```
+
+```{r,fig.width=6,fig.height=8}
+print(znf.sample <- sample(znf.genes,12))
+
+znf.mask <- genes %in% znf.sample
+tmp.dat <- cell.dat[znf.mask,]
+tmp.names <- genes[znf.mask]
+par(mfrow=c(4,3))
+for(i in 1:dim(tmp.dat)[1]) {
+  tmp <- unlist(tmp.dat[i,])
+  hist(tmp,main=paste("Histogram, ",tmp.names[i]))
+}
+```
+
+
+```{r,fig.width=6,fig.height=8}
+heatmap(t(znf.dat))
+```
+
+
+```{r}
+kmax <- 20
+cluster_znf <- data.frame(nclusters=1:kmax,
+                             wss = get_wss(znf.dat,kmax))
+breaks <- 1:kmax
+ggplot(cluster_znf,aes(x=nclusters,y=wss)) + geom_point() + geom_line() +
+  scale_x_continuous(breaks=breaks)
+```
+
+
+\pagebreak
+## PCA 
+
+A final approach to dimension reduction is to use principal component analysis to identify pseudovariables that capture variation in gene expression patterns. We present a PCA of the most commonly expressed genes identified in the previous step. PCA may be computationally intractable for the full data set.
+
+```{r}
+cell.pca <- prcomp(t(work.dat), center = TRUE,scale. = TRUE)
+#summary(cell.pca)
+```
+
+A biplot suggests the two component may be discriminatory, but further components may not be discriminatory.
+```{r}
+#library(devtools)
+#install_github("vqv/ggbiplot", force = TRUE)
+
+library(ggbiplot)
+ggbiplot(cell.pca)
+ggbiplot(cell.pca,choices=c(2,3))
+```
+
+
+
