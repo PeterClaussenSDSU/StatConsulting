@@ -226,7 +226,7 @@ for(i in 1:(ncol(temp.work.dat)-1)){
   aov.tmp <-aov(fmla,data=temp.work.dat)
   aov.tbl <- summary(aov.tmp)
   tbls$pvalue[i] <- aov.tbl[[1]][1,'Pr(>F)']
-  tbls$fmla[i] <- paste(temp[i], "~ Group")
+  tbls$fmla[i] <- temp[i]
 }
 # subset to retrieve only the p-values less than 0.05^n = 0.05^81 = very small
 sig.pvals <- tbls[which(tbls$pvalue<=0.05^81),]
