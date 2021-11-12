@@ -229,7 +229,12 @@ for(i in 1:(ncol(temp.work.dat)-1)){
   tbls$fmla[i] <- temp[i]
 }
 # subset to retrieve only the p-values less than 0.05^n = 0.05^81 = very small
-sig.pvals <- tbls[which(tbls$pvalue<=0.05^81),]
+#sig.pvals <- tbls[which(tbls$pvalue<=0.05^81),]
+
+#PMC - use R to give use adjusted p-values, using Benjamin-Hochberg FDR
+#tbls$p.adjust <- p.adjust(tbls$pvalue, method = "fdr")
+tbls$p.adjust <- p.adjust(tbls$pvalue, method = "bonferroni")
+sig.pvals <- tbls[which(tbls$p.adjust<=0.05),]
 
 # write cell/group to excel
 cells <- rownames(temp.work.dat)
@@ -329,6 +334,52 @@ ggplot(cluster_znf,aes(x=nclusters,y=wss)) + geom_point() + geom_line() +
   scale_x_continuous(breaks=breaks)
 ```
 
+There is no good cutoff for ZNF, at least for k up to 20. Let's cut at 7 as biologically relevant
+
+(RBC, WBC=[neutrophils, basophils, eosinophils, macrophages, T-lymphocytes, B-lymphocytes])
+
+```{r}
+
+grouped.znf.dat <- data.frame(t(znf.dat))
+names(grouped.znf.dat) <- znf.genes
+grouped.znf.dat$Group <- cutree(clusters,k=7)
+grouped.znf.dat$Group <- as.factor(grouped.znf.dat$Group)
+```
+
+```{r}
+colnames.work.dat <-colnames(grouped.znf.dat)
+temp <- str_replace_all(colnames.work.dat, '-', '_')
+temp.work.dat <- grouped.znf.dat
+colnames(temp.work.dat) <- temp
+
+m <- length(temp)-1
+tbls <- data.frame(x=1:m)
+
+for(i in 1:m){
+  fmla <- as.formula(paste(temp[i], "~ Group"))
+  aov.tmp <-aov(fmla,data=temp.work.dat)
+  aov.tbl <- summary(aov.tmp)
+  tbls$pvalue[i] <- aov.tbl[[1]][1,'Pr(>F)']
+  tbls$fmla[i] <- temp[i]
+}
+
+# Use R to adjust p values
+# c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY",
+#   "fdr", "none")
+tbls$p.adjust <- p.adjust(tbls$pvalue, method = "fdr")
+#bonferroni seems to be more conservative for this case
+#tbls$p.adjust <- p.adjust(tbls$pvalue, method = "bonferroni")
+# code for visualizing BH FDR, but probably not needed
+#F.znf <- sort(tbls$pvalue)
+#plot(F.znf,type='l')
+sig.pvals.znf <- tbls[which(tbls$p.adjust<=0.05),]
+
+# write cell/group to excel
+cells.znf <- rownames(temp.work.dat)
+group.znf <- temp.work.dat$Group
+cellgroups.znf <- as.data.frame(cbind(cells.znf, group.znf))
+fwrite(cellgroups, file='cellgroups.znf.csv')
+```
 
 \pagebreak
 ## PCA 
