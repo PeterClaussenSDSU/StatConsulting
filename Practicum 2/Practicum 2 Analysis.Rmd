@@ -211,10 +211,31 @@ First, manually,
 
 ```{r}
 #PMC Stephanie will write a loop to create a table of gene names and whether they are differentially expressed
-fmla <- as.formula(paste(genes.work[67], " ~ Group"))
-aov.tmp <-aov(fmla,data=grouped.work.dat)
-aov.tbl <- summary(aov.tmp)
-aov.tbl[[1]][1,'Pr(>F)']
+library(stringr)
+library(data.table)
+
+colnames.work.dat <-colnames(grouped.work.dat)
+temp <- str_replace_all(colnames.work.dat, '-', '_')
+temp.work.dat <- grouped.work.dat
+colnames(temp.work.dat) <- temp
+
+tbls <- data.frame(x=1:81)
+
+for(i in 1:(ncol(temp.work.dat)-1)){
+  fmla <- as.formula(paste(temp[i], "~ Group"))
+  aov.tmp <-aov(fmla,data=temp.work.dat)
+  aov.tbl <- summary(aov.tmp)
+  tbls$pvalue[i] <- aov.tbl[[1]][1,'Pr(>F)']
+  tbls$fmla[i] <- paste(temp[i], "~ Group")
+}
+# subset to retrieve only the p-values less than 0.05^n = 0.05^81 = very small
+sig.pvals <- tbls[which(tbls$pvalue<=0.05^81),]
+
+# write cell/group to excel
+cells <- rownames(temp.work.dat)
+group <- temp.work.dat$Group
+cellgroups <- as.data.frame(cbind(cells, group))
+fwrite(cellgroups, file='cellgroups.csv')
 ```
 
 We need to determine a critical $\alpha$ to control for false discovery or false positive rates. That is, adjust alpha to be very much smaller. How small? FDR Correction? Bonferri Correction?
@@ -328,6 +349,5 @@ library(ggbiplot)
 ggbiplot(cell.pca)
 ggbiplot(cell.pca,choices=c(2,3))
 ```
-
 
 
