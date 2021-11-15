@@ -19,10 +19,14 @@ set.seed(2)
 
 # Introduction
 
+We have been give a large data file, consisting of expression levels of RNA for different genes. The mRNA were obtained from multiple cell lines. The client requests that we use RNA expression patterns to group cell lines. These data are expected to be very sparse. 
 
-## Data Dimensions
+### Notation
 
-```{r,echo=FALSE}
+A brief note on notation. Cell lines are given an arbitrary sequence of nucleotides, i.e. `AAACATACAACCAC.1` while gene names follow standard human gene nomenclature. In this data set, there are 2700 cell lines and 13714 genes.
+The data are provided as a table in Excel format. We assume value represent relative expression levels. 
+
+```{r,echo=FALSE,include=FALSE}
 if(!file.exists('single.cell.Rda')) {
   cell.dat <- read.csv('single_cell.csv',header=TRUE)
   save(cell.dat,file='single.cell.Rda')
@@ -37,7 +41,24 @@ cell.dat <- cell.dat[,-1]
 dim(cell.dat)
 ```
 
-What is the variation in maximum expression levels?
+Our first task will be to screen the number of candidate genes to a manageable level. We start this process by considering the incidence of gene expression. We determine where a gene is expressed by any given cell line, regardless of the level of expression. From this, we identify 4 groups of genes.
+
+```{r,echo=FALSE}
+incidence.dat <- cell.dat
+incidence.dat[incidence.dat>0.01] <- 1
+
+incidences <- apply(incidence.dat,1,mean)
+hist(incidences, main='Incidence of gene expression',xlab='Proportion of cell lines')
+
+incidence.dat <- incidence.dat[incidences>0.1 & incidences<0.2,]
+genes.incidence <- genes[incidences>0.1 & incidences<0.2]
+dim(incidence.dat)
+```
+
+First, we consider the group where the median expression level is greater than 0. This identifies those genes that are expressed in at least half of the cell lines, and we call these **commonly expressed genes**. From these, we select those genes whose expression patterns are approximately normally distributed (or, at least, symmetrically distributed), define as those genes whose mean gene expression levels are approximately equal to the median gene expression level. These are the **most commonly expressed** genes, and we will use these genes to illustrate the analysis method.
+
+We wish to avoid using genes that are rarely expressed; for this analysis, we will define **rarely expressed** genes as those that are expressed in less than 10% of cell lines. We also define **uncommon genes** as those that are expressed in between 10-20% of cell lines. 
+
 
 ```{r,eval=FALSE}
 row.max <- apply(cell.dat,1,max)
@@ -50,8 +71,6 @@ distances <- dist(t(cell.dat), method="euclidean")
 clusters <- hclust(distances,method="ward.D")
 ggdendrogram(clusters,rotate=TRUE)
 ```
-
-
 
 ```{r,eval=FALSE,fig.width=6,fig.height=8}
 random.samples <- sample(1:dim(cell.dat)[1],12)
@@ -66,18 +85,20 @@ for(i in random.samples) {
 \pagebreak
 ## Commonly expressed genes
 
-```{r}
+We find 273 genes that can be classified as commonly expressed.
+
+```{r,echo=FALSE}
 row.median <- apply(cell.dat,1,median)
 dup <- row.median
 summary(row.median)
 dup <- row.median[row.median>0]
-hist(dup)
+#hist(dup)
 work.dat <- cell.dat[row.median>0,]
 genes.common <- genes[row.median>0]
 dim(work.dat)
 ```
 
-We plot the histograms of some of the common genes
+We plot, for illustrative purposes, the histograms of expression levels of a random sample of 12 commonly expressed genes. We see that many of the gene expression levels are approximately normally distributed, but many have an excess of zeros. This may complicate further analysis, so we screen for approximate normality as described above.
 
 ```{r,fig.width=6,fig.height=8}
 print(common.sample <- sample(genes.common,12))
@@ -90,8 +111,6 @@ for(i in 1:dim(common.dat)[1]) {
   hist(tmp,main=paste("Histogram, ",common.names[i]))
 }
 ```
-
-
 
 ```{r,eval=FALSE,fig.width=6,fig.height=8}
 distances <- dist(t(work.dat), method="euclidean")
@@ -106,13 +125,11 @@ heatmap(t(work.dat))
 \pagebreak
 ## Most commonly expressed genes
 
+We compute both mean and median expression levels for the 273 commonly expressed genes, and select those where the ratio of mean/median is between 0.95 and 1.05 (in other words, the mean is about plus/minus 5% of the median.)
+
 ```{r,echo=FALSE}
 row.means <- apply(cell.dat,1,mean)
 row.median <- apply(cell.dat,1,median)
-plot(row.median,row.means)
-abline(0,1,col='blue')
-abline(0,1.05,col='red')
-abline(0,0.95,col='red')
 ```
 
 ```{r}
@@ -124,9 +141,9 @@ genes.work <- genes[mask]
 dim(work.dat)
 ```
 
-We print some sample histograms for common genes with approximately symmetric distributions.
+Again, we plot expression levels of a random sample the most commonly expressed genes. Note these expression levels exclude most cases of zero-inflated normal distributions.
 
-```{r,fig.width=6,fig.height=8}
+```{r,echo=FALSE,fig.width=6,fig.height=8}
 print(work.sample <- sample(genes.work,12))
 
 work.mask <- genes %in% work.sample
@@ -139,7 +156,9 @@ for(i in 1:dim(common.dat)[1]) {
 }
 ```
 
-A potential dendrogram based on this subset of genes follows.
+# Gene clusters
+
+We create a dendrogram and a heat map illustrating cell groups based on expression levels of the most commonly expressed genes. Our next step will be deciding how to use the tree to assign cell lines to related groups.
 
 ```{r}
 distances <- dist(t(work.dat), method="euclidean")
@@ -155,9 +174,10 @@ ggdendrogram(clusters,rotate=TRUE)
 heatmap(t(work.dat))
 ```
 
+To determine a reasonable number of cell line groups, we use the elbow method. Briefly, we compute, for each choice of the number of groups $k$, a within-group sums of squares (WSS). This number will generally decrease with the number of groups, but the rate of change of WSS declines with group count, and increasing group number produces less improvement in WSS. We look for an 'elbow' in the plot of WSS against group number to find the optimal number of groups.
 
-Code borrowed from Practical Data Science with R 
-```{r}
+```{r,echo=FALSE}
+#Code borrowed from Practical Data Science with R 
 sqr_edist <- function(x,y) {
   sum((x-y)^2)
 }
@@ -187,7 +207,7 @@ get_wss <- function(dmatrix, max_clusters) {
 }
 ```
 
-```{r}
+```{r,echo=FALSE}
 library(ggplot2)
 kmax=20
 cluster_meas <- data.frame(nclusters=1:kmax,
@@ -197,17 +217,20 @@ ggplot(cluster_meas,aes(x=nclusters,y=wss)) + geom_point() + geom_line() +
   scale_x_continuous(breaks=breaks)
 ```
 
-Following the logic from the book, we decide to have 6 groups. We assign groups to data, first by creating a new data frame
-```{r}
+In the above graph, we have two candidate groups. The most obvious 'elbow' is at $k=3$, but there appears an additional break at $k=6$. For this analysis, we choose 6 groups; we expect that there are more than three distinct cell lines in these data.
+
+We assign groups to data but 'cutting' the dendrogram at the point where there are 6 distinct branches, then assign a group number to each cell line. The assignment of cell groups to group lines is provided in the file `cellgroups.csv`
+
+```{r,echo=FALSE}
 grouped.work.dat <- data.frame(t(work.dat))
 names(grouped.work.dat) <- genes.work
 grouped.work.dat$Group <- cutree(clusters,k=6)
 grouped.work.dat$Group <- as.factor(grouped.work.dat$Group)
 ```
 
-We now have cells associated in groups. Which gene expression levels are different by group?
+## Comparison of gene expression levels by group.
 
-First, manually,
+We have identified 81 genes that are most commonly expressed in these cell lines, and have created groups that are determined by expression patterns of these genes. We now analysis each gene, independently, to determine if there are differences in express for each group of cell lines. We do this by simple one-way analysis of variance, and report only those cell lines where the between group F-ratio is significant. Since there will be 81 tests of significance, we apply an FDR correction to the p-values found for each AOV. A table listing gene names along with unadjusted and adjusted p-values is provided as `genesofinterest.csv`. This table contains only those genes with adjusted between groups p-value less than 0.05.
 
 ```{r}
 #PMC Stephanie will write a loop to create a table of gene names and whether they are differentially expressed
@@ -235,6 +258,7 @@ for(i in 1:(ncol(temp.work.dat)-1)){
 #tbls$p.adjust <- p.adjust(tbls$pvalue, method = "fdr")
 tbls$p.adjust <- p.adjust(tbls$pvalue, method = "bonferroni")
 sig.pvals <- tbls[which(tbls$p.adjust<=0.05),]
+fwrite(sig.pvals, file='genesofinterest.csv')
 
 # write cell/group to excel
 cells <- rownames(temp.work.dat)
@@ -243,26 +267,10 @@ cellgroups <- as.data.frame(cbind(cells, group))
 fwrite(cellgroups, file='cellgroups.csv')
 ```
 
-We need to determine a critical $\alpha$ to control for false discovery or false positive rates. That is, adjust alpha to be very much smaller. How small? FDR Correction? Bonferri Correction?
-
-Use for testing $0.05^n$
-
 
 \pagebreak
 
 ## Uncommon, but not rare, genes
-
-```{r}
-incidence.dat <- cell.dat
-incidence.dat[incidence.dat>0.01] <- 1
-
-incidences <- apply(incidence.dat,1,mean)
-hist(incidences)
-
-incidence.dat <- incidence.dat[incidences>0.1 & incidences<0.2,]
-genes.incidence <- genes[incidences>0.1 & incidences<0.2]
-dim(incidence.dat)
-```
 
 ```{r,fig.width=6,fig.height=8}
 print(incidence.sample <- sample(genes.incidence,12))
