@@ -1,5 +1,5 @@
 ---
-title: "Practicum 2"
+title: "Practicum 2 Analysis"
 author:
 - Peter Claussen
 - Maggie Germundson
@@ -41,7 +41,7 @@ cell.dat <- cell.dat[,-1]
 dim(cell.dat)
 ```
 
-Our first task will be to screen the number of candidate genes to a manageable level. We start this process by considering the incidence of gene expression. We determine where a gene is expressed by any given cell line, regardless of the level of expression. From this, we identify 4 groups of genes.
+Our first task will be to screen the number of candidate genes to a manageable level. We start this process by considering the incidence of gene expression. We determine where a gene is expressed by any given cell line, regardless of the level of expression. From this, we identify 4 potential groups of genes.
 
 ```{r,echo=FALSE}
 incidence.dat <- cell.dat
@@ -381,7 +381,7 @@ tbls$p.adjust <- p.adjust(tbls$pvalue, method = "fdr")
 #F.znf <- sort(tbls$pvalue)
 #plot(F.znf,type='l')
 sig.pvals.znf <- tbls[which(tbls$p.adjust<=0.05),]
-
+fwrite(sig.pvals.znf, file='genesofinterest,znf.csv')
 # write cell/group to excel
 cells.znf <- rownames(temp.work.dat)
 group.znf <- temp.work.dat$Group
@@ -389,24 +389,4 @@ cellgroups.znf <- as.data.frame(cbind(cells.znf, group.znf))
 fwrite(cellgroups, file='cellgroups.znf.csv')
 ```
 
-\pagebreak
-## PCA 
-
-A final approach to dimension reduction is to use principal component analysis to identify pseudovariables that capture variation in gene expression patterns. We present a PCA of the most commonly expressed genes identified in the previous step. PCA may be computationally intractable for the full data set.
-
-```{r}
-cell.pca <- prcomp(t(work.dat), center = TRUE,scale. = TRUE)
-#summary(cell.pca)
-```
-
-A biplot suggests the two component may be discriminatory, but further components may not be discriminatory.
-```{r}
-#library(devtools)
-#install_github("vqv/ggbiplot", force = TRUE)
-
-library(ggbiplot)
-ggbiplot(cell.pca)
-ggbiplot(cell.pca,choices=c(2,3))
-```
-
-
+Starting with 438 genes with the text `ZNF` (for zinc finger protein), and assigning 7 groups based on the number of blood cell, we performed clustering and analysis of variance as described above. Only 38 genes of the 438 achieved an FDR adjusted p-value of less than 0.05. These results are exported as  `cellgroups.znf.csv` and `genesofinterest,znf.csv`
