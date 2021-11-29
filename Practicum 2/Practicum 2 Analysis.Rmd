@@ -6,16 +6,62 @@ author:
 - Stephanie Liebl
 date: "11/2/2021"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
+library(ggplot2)
 knitr::opts_chunk$set(echo = TRUE)
 library(cluster)
 library(ggdendro)
+library(stringr)
+library(data.table)
 set.seed(2)
 ```
+
+```{r,echo=FALSE}
+#Code borrowed from Practical Data Science with R 
+sqr_edist <- function(x,y) {
+  sum((x-y)^2)
+}
+wss_cluster <- function(clustermat) {
+  c0 <- colMeans(clustermat)
+  sum(apply(clustermat, 1, FUN= function(row){sqr_edist(row,c0)}))
+}
+wss_total <- function(dmatrix,labels) {
+  wsstot <- 0
+  k <- length(unique(labels)) 
+  for(i in 1 :k) {
+    wsstot <- wsstot + wss_cluster(subset(dmatrix, labels==i))
+  }
+  wsstot
+}
+
+get_wss <- function(dmatrix, max_clusters) {
+  wss = numeric(max_clusters)
+  wss[1] <- wss_cluster(dmatrix)
+  d <- dist(dmatrix, method='euclidean')
+  pfit <- hclust(d, method='ward.D')
+  for(k in 2:max_clusters) {
+    labels <- cutree(pfit,k=k)
+    wss[k] <- wss_total(dmatrix, labels)
+  }
+  wss
+}
+```
+
+# Summary
+
+We have chosen 4 levels of screening for genes of interest. We define gene classes as
+1. Approximately normally expressed genes
+2. Uncommon but not rare genes (expressed in 10%-20% of cell lines)
+3. Rare genes (expressed in <10% of cell llines)
+
+We then use cluster analysis to assign groups to cell lines based in the different gene families, and determine genes of futher interest using analysis of variance, correct for multiple comparisons using Benjamin-Hochberg False Discovery Rate corrections.
+
+The results groupings assigned to cell lines and genes of interest for 2 and 3 are available as `csv` files.
+
 
 # Introduction
 
@@ -50,9 +96,9 @@ incidence.dat[incidence.dat>0.01] <- 1
 incidences <- apply(incidence.dat,1,mean)
 hist(incidences, main='Incidence of gene expression',xlab='Proportion of cell lines')
 
-incidence.dat <- incidence.dat[incidences>0.1 & incidences<0.2,]
-genes.incidence <- genes[incidences>0.1 & incidences<0.2]
-dim(incidence.dat)
+uncommon.dat <- incidence.dat[incidences>0.1 & incidences<0.2,]
+genes.uncommon <- genes[incidences>0.1 & incidences<0.2]
+dim(uncommon.dat)
 ```
 
 First, we consider the group where the median expression level is greater than 0. This identifies those genes that are expressed in at least half of the cell lines, and we call these **commonly expressed genes**. From these, we select those genes whose expression patterns are approximately normally distributed (or, at least, symmetrically distributed), define as those genes whose mean gene expression levels are approximately equal to the median gene expression level. These are the **most commonly expressed** genes, and we will use these genes to illustrate the analysis method.
@@ -122,6 +168,17 @@ ggdendrogram(clusters,rotate=TRUE)
 heatmap(t(work.dat))
 ```
 
+```{r,echo=FALSE}
+kmax=20
+cluster_meas <- data.frame(nclusters=1:kmax,
+                             wss = get_wss(work.dat,kmax))
+breaks <- 1:kmax
+ggplot(cluster_meas,aes(x=nclusters,y=wss)) + geom_point() + geom_line() +
+  scale_x_continuous(breaks=breaks)
+```
+We find only 2-3 potential groups using the elbow method, so we'll skip this gene class as not particularly informative.
+
+
 \pagebreak
 ## Most commonly expressed genes
 
@@ -132,7 +189,7 @@ row.means <- apply(cell.dat,1,mean)
 row.median <- apply(cell.dat,1,median)
 ```
 
-```{r}
+```{r,echo=FALSE}
 ratio <- row.means/row.median
 mask <- ratio<1.05 & ratio>0.95
 sum(mask)
@@ -177,38 +234,6 @@ heatmap(t(work.dat))
 To determine a reasonable number of cell line groups, we use the elbow method. Briefly, we compute, for each choice of the number of groups $k$, a within-group sums of squares (WSS). This number will generally decrease with the number of groups, but the rate of change of WSS declines with group count, and increasing group number produces less improvement in WSS. We look for an 'elbow' in the plot of WSS against group number to find the optimal number of groups.
 
 ```{r,echo=FALSE}
-#Code borrowed from Practical Data Science with R 
-sqr_edist <- function(x,y) {
-  sum((x-y)^2)
-}
-wss_cluster <- function(clustermat) {
-  c0 <- colMeans(clustermat)
-  sum(apply(clustermat, 1, FUN= function(row){sqr_edist(row,c0)}))
-}
-wss_total <- function(dmatrix,labels) {
-  wsstot <- 0
-  k <- length(unique(labels)) 
-  for(i in 1 :k) {
-    wsstot <- wsstot + wss_cluster(subset(dmatrix, labels==i))
-  }
-  wsstot
-}
-
-get_wss <- function(dmatrix, max_clusters) {
-  wss = numeric(max_clusters)
-  wss[1] <- wss_cluster(dmatrix)
-  d <- dist(dmatrix, method='euclidean')
-  pfit <- hclust(d, method='ward.D')
-  for(k in 2:max_clusters) {
-    labels <- cutree(pfit,k=k)
-    wss[k] <- wss_total(dmatrix, labels)
-  }
-  wss
-}
-```
-
-```{r,echo=FALSE}
-library(ggplot2)
 kmax=20
 cluster_meas <- data.frame(nclusters=1:kmax,
                              wss = get_wss(work.dat,kmax))
@@ -228,14 +253,14 @@ grouped.work.dat$Group <- cutree(clusters,k=6)
 grouped.work.dat$Group <- as.factor(grouped.work.dat$Group)
 ```
 
+
+
 ## Comparison of gene expression levels by group.
 
 We have identified 81 genes that are most commonly expressed in these cell lines, and have created groups that are determined by expression patterns of these genes. We now analysis each gene, independently, to determine if there are differences in express for each group of cell lines. We do this by simple one-way analysis of variance, and report only those cell lines where the between group F-ratio is significant. Since there will be 81 tests of significance, we apply an FDR correction to the p-values found for each AOV. A table listing gene names along with unadjusted and adjusted p-values is provided as `genesofinterest.csv`. This table contains only those genes with adjusted between groups p-value less than 0.05.
 
-```{r}
+```{r,echo=FALSE}
 #PMC Stephanie will write a loop to create a table of gene names and whether they are differentially expressed
-library(stringr)
-library(data.table)
 
 colnames.work.dat <-colnames(grouped.work.dat)
 temp <- str_replace_all(colnames.work.dat, '-', '_')
@@ -273,7 +298,7 @@ fwrite(cellgroups, file='cellgroups.csv')
 ## Uncommon, but not rare, genes
 
 ```{r,fig.width=6,fig.height=8}
-print(incidence.sample <- sample(genes.incidence,12))
+print(incidence.sample <- sample(genes.uncommon,12))
 
 incidence.mask <- genes %in% incidence.sample
 tmp.dat <- cell.dat[incidence.mask,]
@@ -284,27 +309,68 @@ for(i in 1:dim(tmp.dat)[1]) {
   hist(tmp,main=paste("Histogram, ",tmp.names[i]))
 }
 ```
+We should note that we end up with approximately 1164 genes in the uncommon group. This is on the edge of compuatationally infeasible for this project
 
-
-```{r,eval=FALSE,fig.width=6,fig.height=8}
-distances <- dist(t(incidence.dat), method="euclidean")
+```{r,fig.width=6,fig.height=8}
+distances <- dist(t(uncommon.dat), method="euclidean")
 clusters <- hclust(distances,method="ward.D")
 ggdendrogram(clusters,rotate=TRUE)
 ```
 
-```{r,eval=FALSE,fig.width=6,fig.height=8}
-heatmap(t(incidence.dat))
+```{r,fig.width=6,fig.height=8}
+heatmap(t(uncommon.dat))
+```
+
+```{r}
+kmax <- 20
+cluster_uncommon <- data.frame(nclusters=1:kmax,
+                             wss = get_wss(uncommon.dat,kmax))
+breaks <- 1:kmax
+ggplot(cluster_uncommon,aes(x=nclusters,y=wss)) + geom_point() + geom_line() +
+  scale_x_continuous(breaks=breaks)
+```
+
+It is less clear, using the elbow method, what an optimal number of groups should be, so we will be consistent and use 6 groups.
+
+```{r,echo=FALSE}
+grouped.uncommen.dat <- data.frame(t(uncommon.dat))
+names(grouped.uncommen.dat) <- genes.uncommon
+grouped.uncommen.dat$Group <- cutree(clusters,k=6)
+grouped.uncommen.dat$Group <- as.factor(grouped.uncommen.dat$Group)
+```
+
+```{r,echo=FALSE}
+colnames.work.dat <-colnames(grouped.uncommen.dat)
+temp <- str_replace_all(colnames.work.dat, '-', '_')
+temp.work.dat <- grouped.uncommen.dat
+colnames(temp.work.dat) <- temp
+
+m <- length(temp)-1
+tbls <- data.frame(x=1:m)
+
+for(i in 1:m){
+  fmla <- as.formula(paste(temp[i], "~ Group"))
+  aov.tmp <-aov(fmla,data=temp.work.dat)
+  aov.tbl <- summary(aov.tmp)
+  tbls$pvalue[i] <- aov.tbl[[1]][1,'Pr(>F)']
+  tbls$fmla[i] <- temp[i]
+}
+
+tbls$p.adjust <- p.adjust(tbls$pvalue, method = "fdr")
+sig.pvals.uncommon <- tbls[which(tbls$p.adjust<=0.05),]
+fwrite(sig.pvals.uncommon, file='genesofinterest,uncommon.csv')
+# write cell/group to excel
+cells.uncommon <- rownames(temp.work.dat)
+group.uncommon <- temp.work.dat$Group
+cellgroups.uncommon <- as.data.frame(cbind(cells.uncommon, group.uncommon))
+fwrite(cellgroups.uncommon, file='cellgroups.uncommon.csv')
 ```
 
 \pagebreak
 
 ## Gene Ontology
 
-
-
-### Question 1.
-
-Is there are subset of genes that, *a priori* would be preferred to differentiate among cell lineages? For example, perhaps zinc-finger protein expression is discriminatory?
+We've selected, as an example of how analysis might proceed with rare genes, to select a specific gene family - those genes with the notation `ZNF` (for zinc finger). This particular protein motif may be of interest in the these types of genes are frequently involved in gene regulation, thus may be more informatative that downstream, non-regulatory genes.
 
 ```{r,fig.width=6,fig.height=8}
 znf.genes <- genes[grepl('^ZNF',genes)]
